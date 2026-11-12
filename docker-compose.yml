@@ -1,0 +1,99 @@
+name: emptyfridge
+
+x-api-env: &api-env
+  NODE_ENV: production
+  PORT: 3000
+  DATABASE_URL: postgres://${POSTGRES_USER:-emptyfridge}:${POSTGRES_PASSWORD:-emptyfridge}@db:5432/${POSTGRES_DB:-emptyfridge}
+  DATABASE_SSL: ${DATABASE_SSL:-disable}
+  DATABASE_PREPARE: ${DATABASE_PREPARE:-true}
+  RUN_MIGRATIONS: "false"
+  PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-emptyfridge}
+      POSTGRES_USER: ${POSTGRES_USER:-emptyfridge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-emptyfridge}
+    ports:
+      # Solo accesible desde el propio host, para `pnpm dev`.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-emptyfridge} -d ${POSTGRES_DB:-emptyfridge}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["node", "dist/shared/db/migrate.js"]
+    environment: *api-env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment: *api-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "${APP_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # Proxy opcional con HTTPS automático: `docker compose --profile proxy up -d`
+  caddy:
+    profiles: ["proxy"]
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

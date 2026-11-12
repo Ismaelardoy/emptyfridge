@@ -1,0 +1,16 @@
+**/node_modules
+**/dist
+**/coverage
+test-results
+playwright-report
+blob-report
+e2e
+.git
+.github
+.env
+.env.*
+!.env.example
+backups
+docs
+README.md
+*.log

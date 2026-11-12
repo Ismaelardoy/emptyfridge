@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: emptyfridge-api
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerContext: .
+    dockerfilePath: ./apps/api/Dockerfile
+    healthCheckPath: /api/health
+    # Disponible en planes de pago. Ejecuta las migraciones una vez antes
+    # de arrancar la nueva versión.
+    preDeployCommand: sh -c "cd /app/apps/api && node dist/shared/db/migrate.js"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Cadena del Session Pooler de Supabase (IPv4, puerto 5432).
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL
+        value: require
+      # true con Session Pooler. Pon false si usas el Transaction Pooler (6543).
+      - key: DATABASE_PREPARE
+        value: "true"
+      # URL pública de la web en Vercel, p. ej. https://emptyfridge.vercel.app
+      - key: PUBLIC_URL
+        sync: false
+      - key: LOG_LEVEL
+        value: info

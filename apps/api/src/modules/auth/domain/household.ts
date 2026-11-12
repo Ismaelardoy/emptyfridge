@@ -18,6 +18,8 @@ export interface User {
   displayName: string;
   displayNameKey: string;
   createdAt: Date;
+  /** Código visible en Hogar. Se guarda también su hash para validarlo. */
+  recoveryCode: string | null;
   membership: Membership | null;
 }
 

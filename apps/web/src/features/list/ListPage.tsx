@@ -45,7 +45,7 @@ export function ListPage() {
 
   return (
     <div className="px-4">
-      <div className="sticky top-14 z-10 -mx-4 bg-stone-50/95 px-4 pb-3 pt-4 backdrop-blur">
+      <div className="sticky top-14 z-10 -mx-4 bg-stone-50/95 px-4 pb-3 pt-4 backdrop-blur lg:top-0">
         <AddItemForm suggestions={suggestions.data?.suggestions ?? []} />
       </div>
 
@@ -81,8 +81,8 @@ export function ListPage() {
       )}
 
       {items.length > 0 && !current.isLoading && !current.isError ? (
-        <div className="finish-dock fixed inset-x-0 z-20 flex justify-center px-4">
-          <div className="w-full max-w-lg rounded-3xl border border-stone-200/70 bg-stone-50/95 p-3 shadow-lg backdrop-blur">
+        <div className="finish-dock fixed inset-x-0 z-20 flex justify-center px-4 lg:left-64">
+          <div className="w-full max-w-lg rounded-3xl border border-stone-200/70 bg-stone-50/95 p-3 shadow-lg backdrop-blur lg:max-w-2xl">
             <Button size="lg" className="w-full" onClick={() => setFinishOpen(true)}>
               <CheckCheck className="h-5 w-5" />
               Finalizar compra

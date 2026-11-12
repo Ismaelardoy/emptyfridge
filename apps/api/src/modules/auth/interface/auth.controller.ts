@@ -1,10 +1,29 @@
-import type { AuthResultDto, RecoveryCodeDto, TransferTicketDto } from '@emptyfridge/contracts';
-import { Controller, Get, HttpCode, HttpStatus, Post, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  type AuthResultDto,
+  type RecoveryCodeDto,
+  type RenameDisplayNameInput,
+  type TransferTicketDto,
+  renameDisplayNameInputSchema,
+} from '@emptyfridge/contracts';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import '@fastify/cookie';
+import { ZodValidationPipe } from '../../../shared/errors/zod-validation.pipe';
 import { CreateTransferTokenUseCase } from '../application/create-transfer-token.use-case';
 import { GenerateRecoveryCodeUseCase } from '../application/generate-recovery-code.use-case';
 import { LogoutUseCase } from '../application/logout.use-case';
+import { RenameDisplayNameUseCase } from '../application/rename-display-name.use-case';
 import { RevokeOtherSessionsUseCase } from '../application/revoke-other-sessions.use-case';
 import type { User } from '../domain/household';
 import { AuthRateLimitGuard } from './auth-rate-limit.guard';
@@ -19,6 +38,7 @@ export class AuthController {
     private readonly logout: LogoutUseCase,
     private readonly createTransferToken: CreateTransferTokenUseCase,
     private readonly generateRecoveryCode: GenerateRecoveryCodeUseCase,
+    private readonly renameDisplayName: RenameDisplayNameUseCase,
     private readonly revokeOtherSessions: RevokeOtherSessionsUseCase,
   ) {}
 
@@ -36,6 +56,17 @@ export class AuthController {
   @UseGuards(AuthGuard)
   me(@CurrentUser() user: User): AuthResultDto {
     return { user: toUserDto(user) };
+  }
+
+  /** Cambia el nombre visible de tu identidad anónima. */
+  @Patch('me')
+  @UseGuards(AuthGuard)
+  async rename(
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(renameDisplayNameInputSchema)) body: RenameDisplayNameInput,
+  ): Promise<AuthResultDto> {
+    const updated = await this.renameDisplayName.execute(user, body);
+    return { user: toUserDto(updated) };
   }
 
   /**

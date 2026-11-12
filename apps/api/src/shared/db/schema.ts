@@ -25,6 +25,7 @@ export const users = pgTable(
     id: uuid('id').primaryKey(),
     displayName: text('display_name').notNull(),
     displayNameKey: text('display_name_key').notNull(),
+    recoveryCode: text('recovery_code'),
     recoveryCodeHash: text('recovery_code_hash'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },

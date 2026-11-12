@@ -13,6 +13,7 @@ export function toUserDto(user: User): UserDto {
   return {
     id: user.id,
     displayName: user.displayName,
+    recoveryCode: user.recoveryCode ? formatRecoveryCode(user.recoveryCode) : null,
     household: user.membership
       ? {
           id: user.membership.household.id,

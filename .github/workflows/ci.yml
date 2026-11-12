@@ -63,7 +63,7 @@ jobs:
           exit 1
 
       - name: Comprobar que la SPA se sirve
-        run: curl -fsS http://localhost:8080/ | grep -q "emptyfridge"
+        run: curl -fsS http://localhost:8080/ | grep -q 'id="root"'
 
       - name: E2E en navegador
         run: pnpm e2e

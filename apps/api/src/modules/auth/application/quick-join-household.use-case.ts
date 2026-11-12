@@ -2,8 +2,8 @@ import type { JoinHouseholdInput } from '@emptyfridge/contracts';
 import { Inject, Injectable } from '@nestjs/common';
 import { AppError } from '../../../shared/errors/app-error';
 import type { User } from '../domain/household';
-import { HOUSEHOLD_REPOSITORY } from '../domain/ports';
-import type { HouseholdRepository } from '../domain/ports';
+import { HOUSEHOLD_REPOSITORY, USER_REPOSITORY } from '../domain/ports';
+import type { HouseholdRepository, UserRepository } from '../domain/ports';
 import { CreateAnonymousUserUseCase } from './create-anonymous-user.use-case';
 import type { IssuedSession } from './issue-session.use-case';
 import { IssueSessionUseCase } from './issue-session.use-case';
@@ -21,6 +21,7 @@ export class QuickJoinHouseholdUseCase {
     private readonly joinHousehold: JoinHouseholdUseCase,
     private readonly issueSession: IssueSessionUseCase,
     @Inject(HOUSEHOLD_REPOSITORY) private readonly households: HouseholdRepository,
+    @Inject(USER_REPOSITORY) private readonly users: UserRepository,
   ) {}
 
   async execute(actor: User | null, input: JoinHouseholdInput): Promise<QuickJoinResult> {
@@ -33,7 +34,16 @@ export class QuickJoinHouseholdUseCase {
     }
 
     const user = actor ?? (await this.createAnonymousUser.execute());
-    const updated = await this.joinHousehold.execute(user, input);
+    let updated: User;
+    try {
+      updated = await this.joinHousehold.execute(user, input);
+    } catch (error) {
+      // Si acaba de nacer una identidad y no consigue entrar, no la dejamos huérfana.
+      if (!actor) {
+        await this.users.deleteById(user.id);
+      }
+      throw error;
+    }
     const session = actor ? undefined : await this.issueSession.execute(user.id);
     return { user: updated, session };
   }

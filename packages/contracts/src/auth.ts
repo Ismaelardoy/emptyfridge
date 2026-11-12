@@ -39,6 +39,18 @@ export const renameHouseholdInputSchema = z.object({
 });
 export type RenameHouseholdInput = z.infer<typeof renameHouseholdInputSchema>;
 
+/** Nombre visible de la identidad anónima (se puede cambiar cuando quieras). */
+export const displayNameSchema = z
+  .string()
+  .trim()
+  .min(1, 'Escribe un nombre')
+  .max(30, 'Máximo 30 caracteres');
+
+export const renameDisplayNameInputSchema = z.object({
+  displayName: displayNameSchema,
+});
+export type RenameDisplayNameInput = z.infer<typeof renameDisplayNameInputSchema>;
+
 /** Ceder la propiedad del hogar a otro miembro. */
 export const transferOwnershipInputSchema = z.object({
   memberId: uuidSchema,
@@ -139,6 +151,7 @@ export type UserHouseholdDto = z.infer<typeof userHouseholdSchema>;
 export const userDtoSchema = z.object({
   id: z.string(),
   displayName: z.string(),
+  recoveryCode: z.string().nullable(),
   household: userHouseholdSchema.nullable(),
 });
 export type UserDto = z.infer<typeof userDtoSchema>;

@@ -13,9 +13,6 @@ export function MostUsedPage() {
   return (
     <div className="px-4 py-4">
       <h1 className="text-xl font-bold tracking-tight text-stone-900">Más usados</h1>
-      <p className="mt-0.5 text-xs leading-5 text-stone-500">
-        Lo que más compráis, agrupado aunque lo escribáis con plural, tilde o una letra distinta.
-      </p>
 
       {mostUsed.isLoading ? (
         <Spinner />
@@ -46,7 +43,7 @@ export function MostUsedPage() {
           </Link>
         </div>
       ) : (
-        <ul className="mt-4 space-y-2">
+        <ul className="mt-4 grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
           {products.map((product, index) => (
             <li
               key={product.name}

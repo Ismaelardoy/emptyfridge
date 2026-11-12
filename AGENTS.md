@@ -12,8 +12,7 @@ Lista de la compra familiar, móvil primero, en español. **No hay cuentas, cont
 - Cada dispositivo recibe una **identidad anónima** (nombre generado, p. ej. “Manolo 3996”) y una sesión con cookie `httpOnly`.
 - Crear lista o abrir un enlace de invitación **crea la identidad y la sesión automáticamente**.
 - El enlace de invitación es el secreto: `/join/:code`. El código empieza en 6 caracteres y crece solo con el número de hogares (ADR 0007).
-- Desde `Hogar` puedes generar un vale temporal de un solo uso para abrir **la misma identidad** en otro dispositivo (`/transfer/:code`). No hay usuario ni PIN (ADR 0006).
-- En `Hogar` también puedes crear un **código de recuperación** de 16 caracteres para volver a tu identidad si pierdes el móvil o borras las cookies (`/recover/:code`). Solo se guarda su hash (ADR 0008).
+- En `Hogar` → **Iniciar sesión en otro dispositivo** se muestra siempre un **código de acceso** guardable de 16 caracteres (`/recover/:code`). Se genera la primera vez y se guarda en claro (y su hash para validarlo). No se guardan emails ni teléfonos. La API del vale temporal de 10 min (`/transfer`) sigue existiendo, pero la UI ya no la usa. Ver ADR 0013.
 - La lista se sincroniza por sondeo cada **3 s** con actualizaciones optimistas.
 - La sección **Más usados** agrupa productos parecidos (plurales, tildes, erratas de una letra, “de/la”…) y permite añadirlos a la lista con un toque.
 - La IP **solo** se usa para rate limiting. Nunca como identidad ni autorización.
@@ -34,6 +33,11 @@ Lista de la compra familiar, móvil primero, en español. **No hay cuentas, cont
 ```bash
 corepack pnpm install
 corepack pnpm --filter @emptyfridge/contracts build
+
+# Desarrollo con recarga en caliente: API + web + contratos en watch.
+# Usa el Postgres de Docker y abre http://localhost:5173
+docker compose up -d db
+corepack pnpm dev
 
 corepack pnpm --filter @emptyfridge/api typecheck
 corepack pnpm --filter @emptyfridge/web typecheck
@@ -108,12 +112,13 @@ Regla de dependencia: `interface → application → domain ← infrastructure`.
 | `application/authenticate-session.use-case.ts` | `execute` (obliga) y `tryExecute` (opcional) |
 | `application/get-household.use-case.ts` | Hogar + miembros |
 | `application/rename-household.use-case.ts` | Solo owner |
+| `application/rename-display-name.use-case.ts` | Cambia el nombre visible de la identidad anónima |
 | `application/transfer-ownership.use-case.ts` | El owner cede la propiedad a otro miembro |
-| `application/remove-member.use-case.ts` | Solo owner |
+| `application/remove-member.use-case.ts` | Cualquier miembro puede expulsar; si sale el owner, se reasigna al más antiguo; la identidad expulsada se borra |
 | `application/logout.use-case.ts` | Borra sesión |
 | `infrastructure/drizzle-*.repository.ts` | Consultas Drizzle |
 | `interface/quick.controller.ts` | **Entrada sin registro**: `/quick/*` |
-| `interface/auth.controller.ts` | `/auth/me`, `/auth/logout`, `/auth/transfer-token`, `/auth/recovery-code` |
+| `interface/auth.controller.ts` | `/auth/me` (GET/PATCH), `/auth/logout`, `/auth/transfer-token`, `/auth/recovery-code` |
 | `interface/household.controller.ts` | `/household`, renombrar, expulsar |
 | `interface/auth.guard.ts` | Exige sesión |
 | `interface/auth-rate-limit.guard.ts` | Rate limit por IP+ruta (solo abuso) |
@@ -145,13 +150,14 @@ Regla de dependencia: `interface → application → domain ← infrastructure`.
 | POST | `/quick/transfer` | No | Canjea un vale temporal y emite sesión para la misma identidad. Body `{code}` |
 | POST | `/quick/recover` | No | Abre la identidad con el código de recuperación. Body `{code}` |
 | GET | `/auth/me` | Cookie | Usuario actual + hogar |
+| PATCH | `/auth/me` | Cookie | Cambiar tu nombre visible. Body `{displayName}` |
 | POST | `/auth/logout` | Cookie | Borra sesión |
 | POST | `/auth/transfer-token` | Cookie | Genera vale de 10 min para otro dispositivo |
 | POST | `/auth/recovery-code` | Cookie | Genera un código de recuperación nuevo |
 | POST | `/auth/sessions/revoke-others` | Cookie | Cierra el resto de sesiones, mantiene la actual |
 | GET | `/household` | Cookie | Hogar + miembros |
 | PATCH | `/household` | Cookie owner | Renombrar |
-| DELETE | `/household/members/:id` | Cookie owner | Expulsar |
+| DELETE | `/household/members/:id` | Cookie | Expulsar (cualquier miembro) |
 | POST | `/household/transfer-ownership` | Cookie owner | Ceder la propiedad a otro miembro |
 | GET | `/lists/current` | Cookie | Lista abierta + items |
 | POST | `/lists/current/items` | Cookie | Añadir producto |
@@ -170,16 +176,16 @@ Errores: `application/problem+json`, códigos estables en `packages/contracts/sr
 | --- | --- | --- |
 | `/onboarding` | `features/household/OnboardingPage.tsx` | Crear lista sin registro |
 | `/join` | `features/auth/JoinHouseholdPage.tsx` | Pestañas: código del hogar / vengo de otro móvil |
-| `/join/:code` | `features/auth/JoinHouseholdPage.tsx` | Autoentrar; crea identidad si no hay sesión |
-| `/transfer/:code` | `features/auth/TransferPage.tsx` | Canjea el vale de otro dispositivo y entra |
+| `/join/:code` | `features/auth/JoinHouseholdPage.tsx` | Autoentrar; si ya estás en otro hogar, ofrece salir y entrar en esta |
+| `/transfer/:code` | `features/auth/TransferPage.tsx` | Canjea un vale antiguo; la UI ya no genera vales nuevos |
 | `/recover/:code` | `features/auth/TransferPage.tsx` (`mode="recovery"`) | Entra con el código de recuperación |
 | `/` | `features/list/ListPage.tsx` | Lista protegida |
 | `/most-used` | `features/list/MostUsedPage.tsx` | Más usados + botón Añadir por producto |
-| `/household` | `features/household/HouseholdPage.tsx` | Compartir, miembros, renombrar, ceder propiedad, cerrar otras sesiones |
+| `/household` | `features/household/HouseholdPage.tsx` | Compartir, miembros, renombrar, ceder propiedad, código de recuperación, cerrar sesión |
 
-- `app/ProtectedLayout.tsx`: sin sesión o sin hogar → `/onboarding`.
-- `features/auth/hooks.ts`: `useMe`, `useCreateHousehold`, `useJoinHousehold`, `useCreateTransferTicket`, `useRedeemTransfer`, `useCreateRecoveryCode`, `useRecoverIdentity`, `useRevokeOtherSessions`, `useLogout`.
-- `features/auth/api.ts`: `getMe`, `createHousehold` (`/quick/household`), `joinHousehold` (`/quick/join`), `createTransferTicket` (`/auth/transfer-token`), `redeemTransfer` (`/quick/transfer`).
+- `app/ProtectedLayout.tsx`: sin sesión o sin hogar → `/onboarding`. En móvil usa cabecera + navegación inferior; en escritorio (`lg`) usa barra lateral fija y contenido centrado.
+- `features/auth/hooks.ts`: `useMe`, `useCreateHousehold`, `useJoinHousehold`, `useRenameDisplayName`, `useRedeemTransfer`, `useCreateRecoveryCode`, `useRecoverIdentity`, `useLogout`.
+- `features/auth/api.ts`: `getMe`, `createHousehold` (`/quick/household`), `joinHousehold` (`/quick/join`), `renameDisplayName` (`PATCH /auth/me`), `redeemTransfer` (`/quick/transfer`), `createRecoveryCode` (`/auth/recovery-code`), `recoverIdentity` (`/quick/recover`).
 - `features/list/hooks.ts`: `useCurrentList` (polling 3 s), `useMostUsed`, mutaciones optimistas.
 - `features/list/MostUsedPage.tsx`: lista agrupada y botón “Añadir”.
 - `features/history/`: eliminado. Ya no hay sección de histórico.
@@ -203,7 +209,7 @@ Si cambias un contrato: compila contratos antes de typecheck de apps.
 
 | Tabla | Campos clave | Invariantes |
 | --- | --- | --- |
-| `users` | `id`, `display_name`, `display_name_key`, `recovery_code_hash`, `created_at` | Sin PIN. Nombre visible único; código de recuperación solo hasheado |
+| `users` | `id`, `display_name`, `display_name_key`, `recovery_code`, `recovery_code_hash`, `created_at` | Sin PIN. Nombre visible único; el código de acceso se guarda visible y su hash se usa para validarlo |
 | `households` | `id`, `name`, `invite_code` | Código único; 6–12 caracteres según hogares |
 | `household_members` | `household_id`, `user_id`, `role`, `joined_at` | PK compuesta; **`unique user_id`**: un hogar por identidad; owner = creador + primero que entra |
 | `sessions` | `id`, `token_hash`, `user_id`, `expires_at` | Solo hash del token; **sin caducidad** (`expires_at` null) |
@@ -227,6 +233,9 @@ El servicio `migrate` de Docker aplica migraciones antes de arrancar la API.
 ### Entrar por enlace
 `/join/:code` → `POST /quick/join` → si no hay cookie se crea usuario anónimo + sesión + membresía → `/`. El **primero** que entra es `owner`; el resto, `member` (ADR 0012). Objetivo: enlace → producto en < 10 s. Escribir el código a mano no autoenvía: los códigos pueden crecer de 6 a 12 caracteres.
 
+### Salir de una lista y entrar en otra
+`Hogar` → “Cerrar sesión en este dispositivo” → `POST /auth/logout` borra la sesión y la cookie; la lista anterior no se toca. Después se puede entrar en otra con su código. Si abres `/join/:code` estando ya en otro hogar, `POST /quick/join` responde `ALREADY_IN_HOUSEHOLD` y la UI ofrece “Salir de la otra lista y entrar en esta”: hace logout y reintenta el join con una identidad nueva.
+
 ### Sincronización
 `useCurrentList` hace polling cada 3 s. Las mutaciones locales son optimistas. No hay SSE/WebSockets.
 
@@ -236,11 +245,8 @@ El servicio `migrate` de Docker aplica migraciones antes de arrancar la API.
 ### Ceder la propiedad
 `Hogar` → botón corona de un miembro → `POST /household/transfer-ownership` con `{memberId}` → transacción: el actor pasa a `member` y el destino a `owner`. Solo un propietario actual puede; tras ceder, queda un único owner (ADR 0010).
 
-### Llevarte tu identidad a otro dispositivo
-`Hogar` → `POST /auth/transfer-token` (cookie) → vale `XXXX-XXXX-XXXX` de 10 min → en el otro móvil `/transfer/<vale>` → `POST /quick/transfer` consume el vale y emite sesión para el mismo `user_id`. No crea identidad nueva. Un dispositivo con hogar no puede canjear. Ver ADR 0006.
-
-### Recuperar tu identidad
-`Hogar` → `POST /auth/recovery-code` → código `XXXX-XXXX-XXXX-XXXX` de 16 caracteres (se muestra una vez) → en el otro móvil `/recover/<código>` → `POST /quick/recover` emite sesión para el mismo `user_id`. No caduca; regenerar invalida el anterior. Ver ADR 0008.
+### Entrar en otro dispositivo (código visible)
+Al entrar en `Hogar`, si la identidad aún no tiene código, `POST /auth/recovery-code` genera un código `XXXX-XXXX-XXXX-XXXX` de 16 caracteres. El código se guarda en `users.recovery_code` y se devuelve en `/auth/me`, por lo que **se muestra siempre** en la tarjeta **Iniciar sesión en otro dispositivo**. En el otro dispositivo `/recover/<código>` → `POST /quick/recover` lo valida contra `recovery_code_hash` y emite sesión para el mismo `user_id`. La UI no regenera el código. La API del vale temporal de 10 min (`/transfer`) sigue existiendo, pero la UI ya no la usa. Ver ADR 0013.
 
 ### Más usados + agrupación
 `GET /lists/most-used` agrupa productos por parecido: plurales, tildes, mayúsculas, puntuación, palabras vacías y erratas de una letra. Devuelve `{ products: [{ name, count }] }`. En UI: `/most-used`, lista ordenada por uso con botón “Añadir”. El autocompletado de la lista usa la misma agrupación.
@@ -252,10 +258,11 @@ El servicio `migrate` de Docker aplica migraciones antes de arrancar la API.
 | Añadir/cambiar un campo del DTO | `packages/contracts/src/*.ts` → mapper API → API client/hook web |
 | Añadir un endpoint | `interface/*.controller.ts` + `application/*.use-case.ts` + provider en `*.module.ts` + `features/*/api.ts` + hook |
 | Cambiar entrada anónima / sesión | `create-anonymous-user.use-case.ts`, `quick-*.use-case.ts`, `authenticate-session.use-case.ts`, `auth.guard.ts`, `session-cookie.ts` |
-| Cerrar sesión en otros móviles | `revoke-other-sessions.use-case.ts`, `auth.controller.ts`, tarjeta “Otros móviles” de `HouseholdPage.tsx` |
+| Cambiar mi nombre visible | `rename-display-name.use-case.ts`, `auth.controller.ts` (`PATCH /auth/me`), `HouseholdPage.tsx`, `features/auth/hooks.ts` |
+| Salir de una lista y entrar en otra | `logout.use-case.ts`, `auth.controller.ts` (`POST /auth/logout`), `HouseholdPage.tsx`, `JoinHouseholdPage.tsx` |
+| Cerrar sesión en otros móviles | `revoke-other-sessions.use-case.ts`, `auth.controller.ts` (`POST /auth/sessions/revoke-others`). Solo API: la UI ya no muestra esa tarjeta |
 | Ceder la propiedad del hogar | `transfer-ownership.use-case.ts`, `household.controller.ts`, `HouseholdPage.tsx` |
-| Llevarte tu identidad a otro dispositivo | `create-transfer-token.use-case.ts`, `redeem-transfer-token.use-case.ts`, `TransferPage.tsx`, tarjeta de `HouseholdPage.tsx` |
-| Recuperar identidad (móvil perdido) | `generate-recovery-code.use-case.ts`, `recover-identity.use-case.ts`, `users.recovery_code_hash`, `TransferPage.tsx` (`recovery`) |
+| Entrar en otro dispositivo / recuperar identidad | `generate-recovery-code.use-case.ts`, `recover-identity.use-case.ts`, `users.recovery_code`, `users.recovery_code_hash`, `TransferPage.tsx` (`recovery`), tarjeta “Iniciar sesión en otro dispositivo” de `HouseholdPage.tsx` (generación automática si `recoveryCode` es null) |
 | Cambiar invitación/compartir | `JoinHouseholdPage.tsx`, `HouseholdPage.tsx`, `quick.controller.ts` |
 | Más usados / agrupación | `group-product-names.ts`, `most-used.use-case.ts`, `MostUsedPage.tsx`, `SuggestionsUseCase` |
 | Lista/productos | `features/list/*`, `modules/lists/*` |
@@ -267,14 +274,14 @@ El servicio `migrate` de Docker aplica migraciones antes de arrancar la API.
 
 ## 12. Invariantes de producto y seguridad
 
-- **No reintroducir cuentas, login, PIN ni preguntas de seguridad.** La identidad es anónima. Para cambiar de dispositivo se usa el vale temporal (ADR 0006) o el código de recuperación (ADR 0008), nunca usuario+contraseña.
+- **No reintroducir cuentas, login, PIN ni preguntas de seguridad.** La identidad es anónima. Para cambiar de dispositivo se usa el código de recuperación guardable (ADR 0008), nunca usuario+contraseña. No se guardan emails ni teléfonos. La API del vale temporal (ADR 0006) sigue por compatibilidad, pero la UI no la usa.
 - **No usar la IP como identidad/autorización.** La IP solo puede usarse para rate limiting.
 - UI en **español**, móvil primero, botones grandes, sin menús escondidos.
-- Una identidad = un hogar (`unique user_id`). No implementar multi-hogar sin cambiar el modelo y la UI.
-- Propietarios: el creador y el primero que entra. Los siguientes son miembros (ADR 0012).
+- Una identidad = un hogar (`unique user_id`). No implementar multi-hogar sin cambiar el modelo y la UI. Si una identidad se queda sin hogar (expulsión o fallo al crear/unirse), se elimina automáticamente; las sesiones, vales y membresías caen en cascada.
+- Propietarios: el creador y el primero que entra. Los siguientes son miembros (ADR 0012). Cualquier miembro puede invitar compartiendo el enlace y expulsar a otros; si se expulsa al owner, el miembro más antiguo que queda toma el relevo.
 - Todas las consultas de listas/items filtran por `household_id`.
 - Cookies `httpOnly`, `SameSite=Lax`, `Secure` con HTTPS; token solo hasheado en BD.
-- Las sesiones **no caducan**. La cookie se reemite en cada visita con 400 días (límite del navegador) y se puede cerrar el resto desde `Hogar → Otros móviles` (ADR 0011).
+- Las sesiones **no caducan**. La cookie se reemite en cada visita con 400 días (límite del navegador). La API permite cerrar el resto (`POST /auth/sessions/revoke-others`), pero la UI ya no muestra esa tarjeta (ADR 0011).
 - No guardar emails ni datos personales.
 - Confirmar antes de borrar datos, migraciones destructivas o cambios de auth.
 - Mantener actualizado `AGENTS.md` si cambia la estructura.
@@ -301,3 +308,15 @@ Si hay migración nueva, comprobar que `migrate` termina sin error y que el E2E 
 - El service worker de la PWA puede servir un bundle viejo; en pruebas, recarga forzada o contexto limpio.
 - `docker compose up -d --build` es la forma fiable de probar migraciones + API + web juntos.
 - El editor/entorno puede tener problemas con acentos en scripts de PowerShell; para Playwright usa selectores ASCII o `getByRole` con regex si hace falta.
+- **Vercel + Render**: la web debe llamar a `/api` y Vercel proxificar a Render (`vercel.json`). Llamar directamente a Render desde Vercel rompe la cookie `SameSite=Lax` por ser otro sitio.
+- **Supabase**: usa Session Pooler (5432) con `DATABASE_SSL=require` y `DATABASE_PREPARE=true`; Transaction Pooler (6543) exige `DATABASE_PREPARE=false`.
+- **Dependencias**: hay `pnpm.overrides` para Fastify. No subir Zod a 4 sin arreglar la inferencia del frontend. Ver `docs/AUDITORIA-2026-11.md`.
+
+## 15. Despliegue y auditoría
+
+- Guía: `docs/DEPLOY-VERCEL-RENDER-SUPABASE.md`.
+- Auditoría: `docs/AUDITORIA-2026-11.md`.
+- Vercel: `vercel.json` en la raíz, con build del monorepo y rewrite `/api/*` a Render.
+- Render: `render.yaml`, Dockerfile `apps/api/Dockerfile`, healthcheck `/api/health`.
+- Supabase: Postgres con SSL; las migraciones se aplican con `preDeployCommand` o `RUN_MIGRATIONS=true`.
+- No hace falta separar el repo en `frontend/` y `backend/`: ya está separado en `apps/web` y `apps/api` y comparte contratos.

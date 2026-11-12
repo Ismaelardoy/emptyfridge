@@ -56,6 +56,7 @@ export function makeUser(overrides: Partial<User> = {}): User {
     displayName: 'Ana',
     displayNameKey: 'ana',
     createdAt: NOW,
+    recoveryCode: null,
     membership: makeMembership(),
     ...overrides,
   };
@@ -88,7 +89,9 @@ export function fakeUserRepository(overrides: Partial<UserRepository> = {}): Use
     findByDisplayNameKey: vi.fn(async () => null),
     findByRecoveryCodeHash: vi.fn(async () => null),
     create: vi.fn(),
-    updateRecoveryCodeHash: vi.fn(async () => undefined),
+    updateDisplayName: vi.fn(async () => undefined),
+    updateRecoveryCode: vi.fn(async () => undefined),
+    deleteById: vi.fn(async () => undefined),
     ...overrides,
   } as UserRepository;
 }

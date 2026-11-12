@@ -22,7 +22,7 @@ export class GenerateRecoveryCodeUseCase {
     for (let attempt = 0; ; attempt += 1) {
       const code = this.tokens.recoveryCode();
       try {
-        await this.users.updateRecoveryCodeHash(user.id, sha256(code));
+        await this.users.updateRecoveryCode(user.id, code, sha256(code));
         return { code };
       } catch (error) {
         const collision = error instanceof AppError && error.code === 'RECOVERY_CODE_COLLISION';

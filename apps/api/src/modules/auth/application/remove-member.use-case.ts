@@ -15,13 +15,6 @@ export class RemoveMemberUseCase {
   async execute(actor: User, targetUserId: string): Promise<void> {
     const membership = requireMembership(actor);
 
-    if (membership.role !== 'owner') {
-      throw AppError.forbidden(
-        'OWNER_ONLY',
-        'Solo el creador del hogar puede expulsar a otros miembros.',
-      );
-    }
-
     if (actor.id === targetUserId) {
       throw AppError.conflict('CANNOT_REMOVE_SELF', 'No puedes expulsarte a ti mismo del hogar.');
     }
@@ -31,6 +24,21 @@ export class RemoveMemberUseCase {
       throw AppError.notFound('MEMBER_NOT_FOUND', 'Ese miembro no está en tu hogar.');
     }
 
+    const targetWasOwner = target.membership.role === 'owner';
     await this.households.removeMember(membership.household.id, targetUserId);
+
+    // Cualquier miembro puede gestionar el hogar. Si se va el propietario,
+    // el miembro más antiguo que queda toma el relevo para no dejar el hogar
+    // sin nadie que pueda renombrarlo o ceder la propiedad.
+    if (targetWasOwner) {
+      const remaining = await this.households.listMembers(membership.household.id);
+      const nextOwner = remaining[0];
+      if (nextOwner) {
+        await this.households.transferOwnership(membership.household.id, actor.id, nextOwner.id);
+      }
+    }
+
+    // La identidad expulsada se queda sin hogar: se elimina también su cuenta.
+    await this.users.deleteById(targetUserId);
   }
 }

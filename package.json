@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "pnpm -r build",
-    "dev": "pnpm --filter @emptyfridge/contracts build && pnpm -r --parallel dev",
+    "dev": "corepack pnpm --filter @emptyfridge/contracts build && corepack pnpm -r --parallel dev",
     "typecheck": "pnpm --filter @emptyfridge/contracts build && pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "lint": "biome check .",
@@ -25,5 +25,10 @@
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@playwright/test": "1.49.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "fastify": "^5.12.8"
+    }
   }
 }

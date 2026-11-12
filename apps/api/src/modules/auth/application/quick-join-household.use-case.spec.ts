@@ -15,19 +15,21 @@ import { IssueSessionUseCase } from './issue-session.use-case';
 import { JoinHouseholdUseCase } from './join-household.use-case';
 import { QuickJoinHouseholdUseCase } from './quick-join-household.use-case';
 
-function build() {
+function build({ inviteCodeFound = true } = {}) {
   const household = makeHousehold({ id: 'h1', inviteCode: 'ABCD2345' });
   const anon = makeUser({ id: 'u9', membership: null });
   const joined = makeUser({
     id: 'u9',
     membership: { household, role: 'member', joinedAt: NOW },
   });
+  const deleteById = vi.fn(async () => undefined);
   const users = fakeUserRepository({
     create: vi.fn(async (input) => ({ ...anon, ...input, membership: null })),
     findByIdWithMembership: vi.fn(async () => joined),
+    deleteById,
   });
   const households = fakeHouseholdRepository({
-    findByInviteCode: vi.fn(async () => household),
+    findByInviteCode: vi.fn(async () => (inviteCodeFound ? household : null)),
     addMember: vi.fn(async () => ({ household, role: 'member' as const, joinedAt: NOW })),
   });
   const sessions = fakeSessionRepository();
@@ -44,9 +46,10 @@ function build() {
     joinHousehold,
     issueSession,
     households,
+    users,
   );
 
-  return { household, quick, sessions };
+  return { household, quick, sessions, deleteById };
 }
 
 describe('QuickJoinHouseholdUseCase', () => {
@@ -70,5 +73,15 @@ describe('QuickJoinHouseholdUseCase', () => {
 
     expect(result.user).toBe(actor);
     expect(result.session).toBeUndefined();
+  });
+
+  it('elimina la identidad recién creada si no puede entrar en ningún hogar', async () => {
+    const { quick, deleteById } = build({ inviteCodeFound: false });
+
+    await expect(quick.execute(null, { inviteCode: 'ABCD2345' })).rejects.toMatchObject({
+      code: 'INVITE_CODE_NOT_FOUND',
+      status: 404,
+    });
+    expect(deleteById).toHaveBeenCalledOnce();
   });
 });

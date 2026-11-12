@@ -13,6 +13,7 @@ import { QuickJoinHouseholdUseCase } from './application/quick-join-household.us
 import { RecoverIdentityUseCase } from './application/recover-identity.use-case';
 import { RedeemTransferTokenUseCase } from './application/redeem-transfer-token.use-case';
 import { RemoveMemberUseCase } from './application/remove-member.use-case';
+import { RenameDisplayNameUseCase } from './application/rename-display-name.use-case';
 import { RenameHouseholdUseCase } from './application/rename-household.use-case';
 import { RevokeOtherSessionsUseCase } from './application/revoke-other-sessions.use-case';
 import { TransferOwnershipUseCase } from './application/transfer-ownership.use-case';
@@ -48,6 +49,7 @@ import { QuickController } from './interface/quick.controller';
     AuthenticateSessionUseCase,
     GetHouseholdUseCase,
     RenameHouseholdUseCase,
+    RenameDisplayNameUseCase,
     RemoveMemberUseCase,
     CreateTransferTokenUseCase,
     RedeemTransferTokenUseCase,

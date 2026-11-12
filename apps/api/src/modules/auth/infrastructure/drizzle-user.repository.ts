@@ -38,6 +38,7 @@ function toUser(
     displayName: row.displayName,
     displayNameKey: row.displayNameKey,
     createdAt: row.createdAt,
+    recoveryCode: row.recoveryCode,
     membership: membership ? toMembership(membership.member, membership.household) : null,
   };
 }
@@ -82,9 +83,38 @@ export class DrizzleUserRepository implements UserRepository {
     return row ? this.toUserFromRow(row) : null;
   }
 
-  async updateRecoveryCodeHash(userId: string, recoveryCodeHash: string): Promise<void> {
+  async updateDisplayName(
+    userId: string,
+    displayName: string,
+    displayNameKey: string,
+  ): Promise<void> {
     try {
-      await this.db.update(users).set({ recoveryCodeHash }).where(eq(users.id, userId));
+      await this.db.update(users).set({ displayName, displayNameKey }).where(eq(users.id, userId));
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        const constraint = (error as { constraint?: string }).constraint;
+        if (constraint === 'users_display_name_key') {
+          throw AppError.conflict('DISPLAY_NAME_TAKEN', 'Ese nombre ya está en uso. Prueba otro.');
+        }
+      }
+      throw error;
+    }
+  }
+
+  async deleteById(userId: string): Promise<void> {
+    await this.db.delete(users).where(eq(users.id, userId));
+  }
+
+  async updateRecoveryCode(
+    userId: string,
+    recoveryCode: string,
+    recoveryCodeHash: string,
+  ): Promise<void> {
+    try {
+      await this.db
+        .update(users)
+        .set({ recoveryCode, recoveryCodeHash })
+        .where(eq(users.id, userId));
     } catch (error) {
       if (isUniqueViolation(error)) {
         const constraint = (error as { constraint?: string }).constraint;
@@ -114,6 +144,7 @@ export class DrizzleUserRepository implements UserRepository {
       displayName: user.displayName,
       displayNameKey: user.displayNameKey,
       createdAt: user.createdAt,
+      recoveryCode: null,
       membership: null,
     };
   }

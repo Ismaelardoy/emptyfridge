@@ -57,6 +57,9 @@ test('lista sin registro, más usados, invitación y sincronización', async ({ 
   await page.getByRole('link', { name: 'Hogar', exact: true }).click();
   const inviteCode = (await page.getByTestId('invite-code').innerText()).trim();
   expect(inviteCode).toMatch(/^[A-Z0-9]{6,8}$/);
+  // El código de acceso se genera solo la primera vez que se entra en Hogar.
+  const recoveryCode = (await page.getByTestId('recovery-code').innerText()).trim();
+  expect(recoveryCode).toMatch(/^[A-Z0-9]{4}(-[A-Z0-9]{4}){3}$/);
 
   // Otra persona abre el enlace sin cuenta y entra directamente.
   const secondContext = await browser.newContext();
@@ -81,15 +84,10 @@ test('lista sin registro, más usados, invitación y sincronización', async ({ 
   await secondPage.reload();
   await expect(secondInput).toBeVisible();
 
-  // Llevarte tu identidad a otro móvil con un enlace temporal de un solo uso.
-  await page.getByRole('link', { name: 'Hogar', exact: true }).click();
-  await page.getByRole('button', { name: 'Pasar a otro móvil' }).click();
-  const transferCode = (await page.getByTestId('transfer-code').innerText()).trim();
-  expect(transferCode).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
-
+  // El código de acceso abre la misma identidad en otro dispositivo.
   const thirdContext = await browser.newContext();
   const thirdPage = await thirdContext.newPage();
-  await thirdPage.goto(`/transfer/${transferCode}`);
+  await thirdPage.goto(`/recover/${recoveryCode.replace(/-/g, '')}`);
   await expect(thirdPage.getByPlaceholder('Añadir producto…')).toBeVisible();
 
   // Es la misma identidad, no un miembro nuevo del hogar.
@@ -97,37 +95,15 @@ test('lista sin registro, más usados, invitación y sincronización', async ({ 
   await expect(thirdPage.getByRole('heading', { name: 'Miembros (2)' })).toBeVisible();
   await expect(thirdPage.getByText('tú', { exact: true })).toBeVisible();
 
-  // El enlace ya se ha consumido: no sirve dos veces.
-  const fourthContext = await browser.newContext();
-  const fourthPage = await fourthContext.newPage();
-  await fourthPage.goto(`/transfer/${transferCode.replace(/-/g, '')}`);
-  await expect(fourthPage.getByRole('heading', { name: 'No se pudo abrir' })).toBeVisible();
-
-  await fourthContext.close();
-
-  // Código de recuperación: vale también si se pierde el móvil (no caduca).
-  await page.getByRole('button', { name: 'Crear código para volver' }).click();
-  const recoveryCode = (await page.getByTestId('recovery-code').innerText()).trim();
-  expect(recoveryCode).toMatch(/^[A-Z0-9]{4}(-[A-Z0-9]{4}){3}$/);
-  await page.getByRole('button', { name: 'Hecho' }).click();
-
-  const fifthContext = await browser.newContext();
-  const fifthPage = await fifthContext.newPage();
-  await fifthPage.goto(`/recover/${recoveryCode.replace(/-/g, '')}`);
-  await expect(fifthPage.getByPlaceholder('Añadir producto…')).toBeVisible();
-  await fifthPage.getByRole('link', { name: 'Hogar', exact: true }).click();
-  await expect(fifthPage.getByRole('heading', { name: 'Miembros (2)' })).toBeVisible();
-
-  await fifthContext.close();
-
   // Ceder la propiedad: el creador pasa a miembro y el otro puede gestionar.
+  await page.getByRole('link', { name: 'Hogar', exact: true }).click();
   await page
     .getByRole('button', { name: /^Hacer owner a / })
     .first()
     .click();
   await page.getByRole('dialog').getByRole('button', { name: 'Ceder propiedad' }).click();
   await expect(page.getByRole('button', { name: /^Hacer owner a / })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /^Expulsar a / })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Expulsar a / })).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Cambiar nombre del hogar' })).toHaveCount(0);
   await expect(page.getByText('Propietario', { exact: true })).toHaveCount(1);
 
@@ -135,15 +111,26 @@ test('lista sin registro, más usados, invitación y sincronización', async ({ 
   await secondPage.goto('/household');
   await expect(secondPage.getByRole('button', { name: /^Hacer owner a / })).toHaveCount(1);
 
-  // Cerrar sesión en los demás móviles: el enlace de traspaso deja de valer.
-  await page.getByRole('button', { name: 'Cerrar sesión en los demás móviles' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Cerrar las demás' }).click();
-  // Esperar la confirmación evita recargar el otro móvil antes de que se borre la sesión.
-  await expect(page.getByText('Sesión cerrada en los demás móviles')).toBeVisible();
-  await thirdPage.reload();
-  await expect(thirdPage.getByRole('heading', { name: '¿Otra vez no queda leche?' })).toBeVisible();
-  await page.goto('/');
-  await expect(page.getByPlaceholder('Añadir producto…')).toBeVisible();
+  // Cerrar sesión en este dispositivo: se olvida esta identidad y se puede entrar en otra lista.
+  await thirdPage.getByRole('button', { name: 'Cerrar sesión en este dispositivo' }).click();
+  await thirdPage
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Cerrar sesión', exact: true })
+    .click();
+  await expect(thirdPage.getByRole('heading', { name: 'Entrar en la lista' })).toBeVisible();
+
+  // Expulsar a alguien elimina su identidad si se queda sin hogar.
+  await secondPage
+    .getByRole('button', { name: /^Expulsar a / })
+    .first()
+    .click();
+  await secondPage
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Expulsar', exact: true })
+    .click();
+  await expect(secondPage.getByRole('heading', { name: 'Miembros (1)' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '¿Otra vez no queda leche?' })).toBeVisible();
 
   await thirdContext.close();
   await secondContext.close();

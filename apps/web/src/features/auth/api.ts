@@ -6,7 +6,7 @@ import type {
   RecoverIdentityInput,
   RecoveryCodeDto,
   RedeemTransferInput,
-  TransferTicketDto,
+  RenameDisplayNameInput,
   UserDto,
 } from '@emptyfridge/contracts';
 
@@ -26,12 +26,12 @@ export function createHousehold(input: CreateHouseholdInput): Promise<AuthResult
   return api<AuthResultDto>('/quick/household', { method: 'POST', json: input });
 }
 
-export function joinHousehold(input: JoinHouseholdInput): Promise<AuthResultDto> {
-  return api<AuthResultDto>('/quick/join', { method: 'POST', json: input });
+export function renameDisplayName(input: RenameDisplayNameInput): Promise<AuthResultDto> {
+  return api<AuthResultDto>('/auth/me', { method: 'PATCH', json: input });
 }
 
-export function createTransferTicket(): Promise<TransferTicketDto> {
-  return api<TransferTicketDto>('/auth/transfer-token', { method: 'POST' });
+export function joinHousehold(input: JoinHouseholdInput): Promise<AuthResultDto> {
+  return api<AuthResultDto>('/quick/join', { method: 'POST', json: input });
 }
 
 export function redeemTransfer(input: RedeemTransferInput): Promise<AuthResultDto> {
@@ -44,10 +44,6 @@ export function createRecoveryCode(): Promise<RecoveryCodeDto> {
 
 export function recoverIdentity(input: RecoverIdentityInput): Promise<AuthResultDto> {
   return api<AuthResultDto>('/quick/recover', { method: 'POST', json: input });
-}
-
-export function revokeOtherSessions(): Promise<void> {
-  return api<void>('/auth/sessions/revoke-others', { method: 'POST' });
 }
 
 export function logout(): Promise<void> {

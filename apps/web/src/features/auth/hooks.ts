@@ -4,13 +4,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createHousehold,
   createRecoveryCode,
-  createTransferTicket,
   getMe,
   joinHousehold,
   logout,
   recoverIdentity,
   redeemTransfer,
-  revokeOtherSessions,
+  renameDisplayName,
 } from './api';
 
 export function useMe() {
@@ -43,9 +42,17 @@ export function useJoinHousehold() {
   return useMutation({ mutationFn: joinHousehold, onSuccess });
 }
 
-/** Enlace temporal para abrir esta identidad en otro dispositivo. */
-export function useCreateTransferTicket() {
-  return useMutation({ mutationFn: createTransferTicket });
+/** Cambia el nombre visible de la identidad anónima. */
+export function useRenameDisplayName() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: renameDisplayName,
+    onSuccess: (result) => {
+      queryClient.setQueryData<UserDto | null>(queryKeys.me, result.user);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.household });
+    },
+  });
 }
 
 export function useRedeemTransfer() {
@@ -55,17 +62,21 @@ export function useRedeemTransfer() {
 
 /** Genera un código de recuperación nuevo; invalida el anterior. */
 export function useCreateRecoveryCode() {
-  return useMutation({ mutationFn: createRecoveryCode });
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createRecoveryCode,
+    onSuccess: ({ code }) => {
+      queryClient.setQueryData<UserDto | null>(queryKeys.me, (current) =>
+        current ? { ...current, recoveryCode: code } : current,
+      );
+    },
+  });
 }
 
 export function useRecoverIdentity() {
   const onSuccess = useAuthSuccessHandler();
   return useMutation({ mutationFn: recoverIdentity, onSuccess });
-}
-
-/** Cierra la sesión en el resto de dispositivos, conservando la actual. */
-export function useRevokeOtherSessions() {
-  return useMutation({ mutationFn: revokeOtherSessions });
 }
 
 export function useLogout() {

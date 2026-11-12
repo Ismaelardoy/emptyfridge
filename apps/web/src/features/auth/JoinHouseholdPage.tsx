@@ -1,4 +1,5 @@
-import { useJoinHousehold, useMe } from '@/features/auth/hooks';
+import { useJoinHousehold, useLogout, useMe } from '@/features/auth/hooks';
+import { ApiError } from '@/shared/api/client';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/Button';
 import { Field } from '@/shared/ui/Field';
@@ -21,6 +22,7 @@ type JoinMode = 'invite' | 'transfer';
 export function JoinHouseholdPage() {
   const me = useMe();
   const join = useJoinHousehold();
+  const logout = useLogout();
   const navigate = useNavigate();
   const params = useParams<{ code?: string }>();
 
@@ -39,9 +41,11 @@ export function JoinHouseholdPage() {
   const looksLikeAccess = isTransferCode || isRecoveryCode;
   const started = useRef(false);
   const { mutate: joinHousehold } = join;
+  const alreadyInHousehold =
+    join.error instanceof ApiError && join.error.code === 'ALREADY_IN_HOUSEHOLD';
 
   useEffect(() => {
-    if (me.isLoading || me.data?.household || !joiningFromLink || started.current) {
+    if (me.isLoading || !joiningFromLink || started.current) {
       return;
     }
     started.current = true;
@@ -49,10 +53,14 @@ export function JoinHouseholdPage() {
       { inviteCode: routeCode },
       {
         onSuccess: () => navigate('/', { replace: true }),
-        onError: (error) => toast.error(error.message),
+        onError: (error) => {
+          if (!(error instanceof ApiError && error.code === 'ALREADY_IN_HOUSEHOLD')) {
+            toast.error(error.message);
+          }
+        },
       },
     );
-  }, [me.isLoading, me.data?.household, joiningFromLink, routeCode, joinHousehold, navigate]);
+  }, [me.isLoading, joiningFromLink, routeCode, joinHousehold, navigate]);
 
   if (me.isLoading) {
     return (
@@ -62,13 +70,32 @@ export function JoinHouseholdPage() {
     );
   }
 
-  if (me.data?.household) {
+  if (me.data?.household && !joiningFromLink) {
     return <Navigate to="/" replace />;
   }
 
+  /**
+   * Si este móvil ya está en otra lista, salimos de esa identidad y entramos
+   * en la invitada. La lista anterior no se borra: solo dejamos de usarla aquí.
+   */
+  const switchHousehold = () => {
+    logout.mutate(undefined, {
+      onSuccess: () => {
+        joinHousehold(
+          { inviteCode: routeCode },
+          {
+            onSuccess: () => navigate('/', { replace: true }),
+            onError: (error) => toast.error(error.message),
+          },
+        );
+      },
+      onError: (error) => toast.error(error.message),
+    });
+  };
+
   if (joiningFromLink) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center bg-stone-50 px-5 py-10">
+      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center bg-stone-50 px-5 py-10 sm:max-w-xl sm:px-8">
         <div className="flex items-start gap-3">
           <LogoMark className="h-14 w-14" />
           <div className="min-w-0">
@@ -76,27 +103,56 @@ export function JoinHouseholdPage() {
               ErFrigovacio
             </p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight text-stone-900">
-              {join.isError ? 'No se pudo entrar' : 'Entrando en la lista…'}
+              {join.isError
+                ? alreadyInHousehold
+                  ? 'Ya estás en otra lista'
+                  : 'No se pudo entrar'
+                : 'Entrando en la lista…'}
             </h1>
           </div>
         </div>
 
         {join.isError ? (
           <>
-            <p className="mt-4 text-sm leading-6 text-stone-500">{join.error.message}</p>
-            <Button
-              className="mt-6 w-full"
-              onClick={() => navigate('/onboarding', { replace: true })}
-            >
-              Crear mi lista
-            </Button>
-            <Link
-              to="/onboarding"
-              className="mt-3 inline-flex items-center justify-center gap-1 py-2 text-sm font-medium text-stone-500 hover:text-stone-700"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Volver
-            </Link>
+            <p className="mt-4 text-sm leading-6 text-stone-500">
+              {alreadyInHousehold
+                ? 'Este móvil ya está en otra lista. Si quieres entrar en esta, sal de la actual. La otra lista no se borra.'
+                : join.error.message}
+            </p>
+            {alreadyInHousehold ? (
+              <>
+                <Button
+                  className="mt-6 w-full"
+                  loading={logout.isPending}
+                  onClick={switchHousehold}
+                >
+                  Salir de la otra lista y entrar en esta
+                </Button>
+                <Link
+                  to="/"
+                  className="mt-3 inline-flex items-center justify-center gap-1 py-2 text-sm font-medium text-stone-500 hover:text-stone-700"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Volver a mi lista
+                </Link>
+              </>
+            ) : (
+              <>
+                <Button
+                  className="mt-6 w-full"
+                  onClick={() => navigate('/onboarding', { replace: true })}
+                >
+                  Crear mi lista
+                </Button>
+                <Link
+                  to="/onboarding"
+                  className="mt-3 inline-flex items-center justify-center gap-1 py-2 text-sm font-medium text-stone-500 hover:text-stone-700"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Volver
+                </Link>
+              </>
+            )}
           </>
         ) : (
           <>
@@ -207,7 +263,8 @@ export function JoinHouseholdPage() {
           <p className="mt-4 text-sm leading-6 text-stone-500">
             Si ya usabas esta lista y cambiaste de móvil o borraste los datos del navegador, pásala
             a este: en el móvil viejo abre <strong>Hogar</strong> y toca{' '}
-            <strong>Pasar a otro móvil</strong>. Si ya no lo tienes, pega tu código para volver.
+            <strong>Iniciar sesión en otro dispositivo</strong>. Si ya no lo tienes, pide el enlace
+            o el código a otra persona de la lista.
           </p>
 
           <form onSubmit={submitAccess} className="mt-6 space-y-4">
@@ -220,7 +277,7 @@ export function JoinHouseholdPage() {
               autoComplete="off"
               spellCheck={false}
               className="font-mono tracking-[0.12em]"
-              hint="Vale el enlace de 10 minutos o el código para volver a entrar."
+              hint="Vale el enlace de 10 minutos o el código que te hayan pasado."
               autoFocus
               required
             />

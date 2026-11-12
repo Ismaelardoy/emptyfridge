@@ -67,7 +67,7 @@ export function TransferPage({ mode = 'transfer' }: { mode?: OpenMode }) {
   const failed = !looksLikeCode || redeem.isError;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center bg-stone-50 px-5 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center bg-stone-50 px-5 py-10 sm:max-w-xl sm:px-8">
       <div className="flex items-start gap-3">
         <LogoMark className="h-14 w-14" />
         <div className="min-w-0">

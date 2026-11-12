@@ -22,7 +22,10 @@ export interface UserRepository {
   findByDisplayNameKey(displayNameKey: string): Promise<User | null>;
   findByRecoveryCodeHash(recoveryCodeHash: string): Promise<User | null>;
   create(user: NewUser): Promise<User>;
-  updateRecoveryCodeHash(userId: string, recoveryCodeHash: string): Promise<void>;
+  updateDisplayName(userId: string, displayName: string, displayNameKey: string): Promise<void>;
+  updateRecoveryCode(userId: string, recoveryCode: string, recoveryCodeHash: string): Promise<void>;
+  /** Borra la identidad y en cascada sus sesiones, vales y membresías. */
+  deleteById(userId: string): Promise<void>;
 }
 
 export const HOUSEHOLD_REPOSITORY = Symbol('HOUSEHOLD_REPOSITORY');

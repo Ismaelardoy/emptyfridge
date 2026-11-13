@@ -57,7 +57,7 @@ export function ListPage() {
 
   return (
     <div className="px-4">
-      <div className="list-add-bar sticky top-0 z-10 -mx-4 bg-stone-50/85 px-4 pb-2 pt-2 backdrop-blur-xl lg:top-0">
+      <div className="list-add-bar sticky top-0 z-10 -mx-4 px-4 pt-2 pb-2 lg:top-0">
         <AddItemForm />
       </div>
 

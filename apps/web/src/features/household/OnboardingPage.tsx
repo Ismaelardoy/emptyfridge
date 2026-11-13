@@ -93,7 +93,7 @@ export function OnboardingPage() {
                 <h1 className="text-center text-[2rem] leading-[1.1] font-black tracking-[-0.04em] text-stone-900 sm:text-[2.6rem]">
                   {copy.title}
                 </h1>
-                <p className="mx-auto mt-2 max-w-[23rem] text-center text-base leading-6 text-stone-600 sm:text-[17px]">
+                <p className="mx-auto mt-2 max-w-[23rem] text-center text-base leading-6 font-medium text-stone-800 sm:text-[17px]">
                   {copy.subtitle}
                 </p>
               </div>

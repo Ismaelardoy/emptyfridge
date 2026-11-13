@@ -224,9 +224,9 @@ export function HouseholdPage() {
 
   return (
     <div className="px-4 pt-4 pb-24 lg:pb-6">
-      <h1 className="text-xl font-bold tracking-tight text-stone-900">Hogar</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-stone-900">Hogar</h1>
       <div className="mt-0.5 flex items-center gap-1.5">
-        <p className="truncate text-xs text-stone-500">{home.name}</p>
+        <p className="truncate text-sm text-stone-500">{home.name}</p>
         {isOwner ? (
           <button
             type="button"
@@ -242,18 +242,15 @@ export function HouseholdPage() {
 
       <div className="mt-4 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
         <Card>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-stone-400">
-            Invitar a quien quieras
-          </p>
+          <p className="text-xs font-bold tracking-[0.14em] text-stone-500 uppercase">Invitar</p>
           <p
             data-testid="invite-code"
             className="mt-2 font-mono text-2xl font-bold tracking-[0.25em] text-stone-900"
           >
             {home.inviteCode}
           </p>
-          <p className="mt-1 text-xs leading-5 text-stone-500">
-            Comparte este enlace por WhatsApp. Quien lo abra entrará directamente en la lista, sin
-            crear cuenta.
+          <p className="mt-1 text-[13px] leading-5 text-stone-500">
+            Comparte el enlace. Quien lo abra entra directo, sin cuenta.
           </p>
           <div className="mt-4 space-y-2">
             <Button variant="whatsapp" className="w-full" onClick={shareOnWhatsApp}>
@@ -276,9 +273,9 @@ export function HouseholdPage() {
         </Card>
 
         <Card>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-stone-400">Tú</p>
+          <p className="text-xs font-bold tracking-[0.14em] text-stone-500 uppercase">Tú</p>
           <div className="mt-2 flex items-center justify-between gap-3">
-            <p className="truncate text-sm font-medium text-stone-800">{user.displayName}</p>
+            <p className="truncate text-[15px] font-medium text-stone-800">{user.displayName}</p>
             <button
               type="button"
               onClick={openName}
@@ -289,31 +286,28 @@ export function HouseholdPage() {
               Cambiar
             </button>
           </div>
-          <p className="mt-1 text-xs leading-5 text-stone-500">
-            Te recordamos en este dispositivo. Sin cuenta ni contraseña. Puedes cambiar el nombre
-            que verán los demás miembros.
+          <p className="mt-1 text-[13px] leading-5 text-stone-500">
+            Sin cuenta ni contraseña. Puedes cambiar el nombre que ven los demás.
           </p>
           <Button className="mt-3 w-full" variant="secondary" onClick={() => setLogoutOpen(true)}>
             <LogOut className="h-4 w-4" />
-            Cerrar sesión en este dispositivo
+            Cerrar sesión aquí
           </Button>
         </Card>
 
         <Card>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-stone-400">
-            Iniciar sesión en otro dispositivo
+          <p className="text-xs font-bold tracking-[0.14em] text-stone-500 uppercase">
+            Otro dispositivo
           </p>
-          <p className="mt-2 text-sm font-medium text-stone-800">
-            Un código guardable, sin cuenta ni PIN
-          </p>
-          <p className="mt-1 text-xs leading-5 text-stone-500">
+          <p className="mt-2 text-[15px] font-medium text-stone-800">Sin cuenta ni PIN</p>
+          <p className="mt-1 text-[13px] leading-5 text-stone-500">
             {user.recoveryCode
               ? canSave
-                ? 'Guárdalo en el móvil: la próxima vez te lo recordará solo.'
-                : 'Guárdalo en un sitio seguro. Es tu código de acceso a esta lista.'
+                ? 'Guárdalo y no tendrás que escribirlo.'
+                : 'Guárdalo en un sitio seguro.'
               : createRecovery.isPending
-                ? 'Generando tu código de acceso…'
-                : 'No se pudo generar el código de acceso.'}
+                ? 'Generando tu código…'
+                : 'No se pudo generar el código.'}
           </p>
 
           {user.recoveryCode ? (
@@ -334,12 +328,6 @@ export function HouseholdPage() {
                 <Copy className="h-4 w-4" />
                 Copiar código
               </Button>
-              {canSave ? null : (
-                <p className="text-[11px] leading-5 text-stone-400">
-                  Este navegador no puede abrir el aviso de guardar. Copia el código y pégalo en
-                  Contraseñas, Notas o tu gestor de contraseñas.
-                </p>
-              )}
             </div>
           ) : createRecovery.isError ? (
             <Button
@@ -356,7 +344,7 @@ export function HouseholdPage() {
       </div>
 
       <section className="mt-6">
-        <h2 className="mb-2 flex items-center gap-1.5 px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-stone-400">
+        <h2 className="mb-2 flex items-center gap-1.5 px-1 text-xs font-bold tracking-[0.14em] text-stone-500 uppercase">
           <Users className="h-3.5 w-3.5" />
           Miembros ({members.length})
         </h2>
@@ -370,13 +358,13 @@ export function HouseholdPage() {
                 {entry.displayName.charAt(0).toUpperCase()}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2 text-sm font-medium text-stone-800">
+                <span className="flex items-center gap-2 text-[15px] font-medium text-stone-800">
                   <span className="truncate">{entry.displayName}</span>
                   {entry.id === user.id ? (
                     <span className="text-xs font-normal text-stone-400">tú</span>
                   ) : null}
                 </span>
-                <span className="text-[11px] text-stone-400">
+                <span className="text-xs text-stone-400">
                   {entry.role === 'owner' ? 'Propietario' : 'Miembro'}
                 </span>
               </span>
@@ -410,19 +398,12 @@ export function HouseholdPage() {
 
       <RecentAdditions entries={currentList.data?.recentAdditions ?? []} />
 
-      <Modal
-        open={logoutOpen}
-        onClose={() => setLogoutOpen(false)}
-        title="Cerrar sesión en este dispositivo"
-      >
-        <p className="text-sm leading-6 text-stone-600">
-          Dejarás de usar esta lista en este dispositivo. La lista y los demás miembros siguen
-          igual.
+      <Modal open={logoutOpen} onClose={() => setLogoutOpen(false)} title="Cerrar sesión aquí">
+        <p className="text-[15px] leading-6 text-stone-600">
+          Dejarás de usar esta lista aquí. Los demás no cambian.
         </p>
-        <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-xs leading-5 text-amber-900 ring-1 ring-amber-200">
-          Si esta es tu lista buena, asegúrate de tener guardado tu código de acceso. Sin él, este
-          dispositivo perderá el acceso a tu identidad. También puedes pedir a otro miembro que te
-          comparta el enlace del hogar.
+        <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-[13px] leading-5 text-amber-900 ring-1 ring-amber-200">
+          Guarda antes tu código de acceso o pide el enlace a otro miembro.
         </p>
         <div className="mt-5 flex gap-2">
           <Button
@@ -448,7 +429,7 @@ export function HouseholdPage() {
             maxLength={30}
             autoFocus
             required
-            hint="Es el nombre que verán los demás miembros en la lista."
+            hint="El nombre que verán los demás."
           />
           <div className="flex gap-2">
             <Button
@@ -507,9 +488,9 @@ export function HouseholdPage() {
         onClose={() => setOwnerTarget(null)}
         title={ownerTarget ? `Ceder la propiedad a ${ownerTarget.displayName}` : 'Ceder propiedad'}
       >
-        <p className="text-sm leading-6 text-stone-600">
-          {ownerTarget?.displayName ?? 'Esa persona'} será el único propietario y tú pasarás a
-          miembro. Solo los propietarios pueden renombrar el hogar y expulsar a otros.
+        <p className="text-[15px] leading-6 text-stone-600">
+          {ownerTarget?.displayName ?? 'Esa persona'} pasa a propietario y tú a miembro. Solo el
+          propietario puede renombrar y expulsar.
         </p>
         <div className="mt-5 flex gap-2">
           <Button
@@ -542,9 +523,8 @@ export function HouseholdPage() {
         onClose={() => setRemoveTarget(null)}
         title={removeTarget ? `Expulsar a ${removeTarget.displayName}` : 'Expulsar miembro'}
       >
-        <p className="text-sm leading-6 text-stone-600">
-          Dejará de tener acceso al hogar. Si vuelve a abrir el enlace de invitación, podrá entrar
-          de nuevo.
+        <p className="text-[15px] leading-6 text-stone-600">
+          Perderá el acceso. Si vuelve a abrir el enlace, podrá entrar.
         </p>
         <div className="mt-5 flex gap-2">
           <Button

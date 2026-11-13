@@ -134,7 +134,7 @@ test('lista sin registro, más usados, invitación y sincronización', async ({ 
   await expect(secondPage.getByRole('button', { name: /^Hacer owner a / })).toHaveCount(1);
 
   // Cerrar sesión en este dispositivo: se olvida esta identidad y se puede entrar en otra lista.
-  await thirdPage.getByRole('button', { name: 'Cerrar sesión en este dispositivo' }).click();
+  await thirdPage.getByRole('button', { name: 'Cerrar sesión aquí' }).click();
   await thirdPage
     .getByRole('dialog')
     .getByRole('button', { name: 'Cerrar sesión', exact: true })

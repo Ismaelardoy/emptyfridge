@@ -31,6 +31,19 @@ export interface ListWithItems extends ShoppingList {
   items: ShoppingItem[];
 }
 
+/** Alta reciente en cualquier lista del hogar (incluidas las ya cerradas). */
+export interface RecentAddition {
+  id: string;
+  itemName: string;
+  addedBy: MemberRef | null;
+  createdAt: Date;
+}
+
+export interface CurrentList {
+  list: ListWithItems | null;
+  recentAdditions: RecentAddition[];
+}
+
 export interface FinishResult {
   closedListId: string;
 }

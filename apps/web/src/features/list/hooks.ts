@@ -1,3 +1,4 @@
+import { notifyItemAdded } from '@/shared/lib/pwa-install';
 import { queryKeys } from '@/shared/lib/query-keys';
 import type {
   CurrentListDto,
@@ -51,11 +52,14 @@ export function useAddItem() {
     onSuccess: (result) => {
       if (!result.created) {
         toast('Ese producto ya estaba en la lista');
+      } else {
+        notifyItemAdded();
       }
 
       const current = queryClient.getQueryData<CurrentListDto>(queryKeys.currentList);
       if (current?.list && current.list.id === result.item.listId) {
         queryClient.setQueryData<CurrentListDto>(queryKeys.currentList, {
+          ...current,
           list: {
             ...current.list,
             items: [
@@ -63,6 +67,17 @@ export function useAddItem() {
               ...current.list.items.filter((item) => item.id !== result.item.id),
             ],
           },
+          recentAdditions: result.created
+            ? [
+                {
+                  id: result.item.id,
+                  itemName: result.item.name,
+                  addedBy: result.item.addedBy,
+                  createdAt: result.item.createdAt,
+                },
+                ...(current.recentAdditions ?? []).filter((entry) => entry.id !== result.item.id),
+              ].slice(0, 15)
+            : (current.recentAdditions ?? []),
         });
       } else {
         void queryClient.invalidateQueries({ queryKey: queryKeys.currentList });
@@ -96,6 +111,7 @@ export function useToggleItem() {
       queryClient.setQueryData<CurrentListDto>(queryKeys.currentList, (old) =>
         old?.list
           ? {
+              ...old,
               list: {
                 ...old.list,
                 items: old.list.items.map((item) => (item.id === id ? { ...item, checked } : item)),
@@ -131,10 +147,12 @@ export function useDeleteItem() {
       queryClient.setQueryData<CurrentListDto>(queryKeys.currentList, (old) =>
         old?.list
           ? {
+              ...old,
               list: {
                 ...old.list,
                 items: old.list.items.filter((entry) => entry.id !== item.id),
               },
+              recentAdditions: (old.recentAdditions ?? []).filter((entry) => entry.id !== item.id),
             }
           : old,
       );

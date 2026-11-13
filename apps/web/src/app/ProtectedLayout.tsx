@@ -16,6 +16,9 @@ const NAV_ITEMS = [
   { to: '/household', label: 'Hogar', icon: Users, end: false },
 ] as const;
 
+// En móvil la lista va en el centro, con un botón elevado y más grande.
+const MOBILE_NAV_ITEMS = [NAV_ITEMS[1], NAV_ITEMS[0], NAV_ITEMS[2]] as const;
+
 export function ProtectedLayout() {
   const me = useMe();
 
@@ -111,24 +114,70 @@ export function ProtectedLayout() {
           </div>
         </main>
 
-        <nav className="sticky bottom-0 z-20 border-t border-stone-200/70 bg-white/90 pb-safe backdrop-blur lg:hidden">
-          <div className="mx-auto grid max-w-lg grid-cols-3 md:max-w-2xl">
-            {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                className={({ isActive }) =>
-                  cn(
-                    'flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors',
-                    isActive ? 'text-emerald-700' : 'text-stone-400 hover:text-stone-600',
-                  )
-                }
-              >
-                <Icon className="h-5 w-5" aria-hidden />
-                {label}
-              </NavLink>
-            ))}
+        <nav className="sticky bottom-0 z-20 lg:hidden">
+          <div className="mx-auto w-full max-w-lg md:max-w-2xl">
+            <div className="relative">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-16 rounded-t-[1.75rem] border-t border-stone-200/70 bg-white shadow-[0_-8px_30px_rgba(28,25,23,0.06)]"
+              />
+
+              <div className="relative grid grid-cols-3 items-end px-2 pb-safe">
+                {MOBILE_NAV_ITEMS.map(({ to, label, icon: Icon, end }, index) => {
+                  const center = index === 1;
+
+                  return (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      end={end}
+                      className={({ isActive }) =>
+                        cn(
+                          'transition-colors',
+                          center
+                            ? 'relative flex flex-col items-center pb-2.5 pt-9 text-[10px] font-semibold'
+                            : 'flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium',
+                          isActive
+                            ? 'text-emerald-700'
+                            : center
+                              ? 'text-stone-500'
+                              : 'text-stone-400 hover:text-stone-600',
+                        )
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          {center ? (
+                            <span className="absolute left-1/2 top-0 h-14 w-14 -translate-x-1/2 -translate-y-6">
+                              <span
+                                aria-hidden
+                                className={cn(
+                                  'absolute inset-0 rounded-full blur-md',
+                                  isActive ? 'bg-emerald-400/70' : 'bg-emerald-300/60',
+                                )}
+                              />
+                              <span
+                                className={cn(
+                                  'relative flex h-14 w-14 items-center justify-center rounded-full shadow-[0_6px_18px_rgba(5,150,105,0.35)] ring-4 transition-colors',
+                                  isActive
+                                    ? 'bg-emerald-600 text-white ring-emerald-200'
+                                    : 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+                                )}
+                              >
+                                <Icon className="h-6 w-6" strokeWidth={2.2} aria-hidden />
+                              </span>
+                            </span>
+                          ) : (
+                            <Icon className="h-5 w-5" aria-hidden />
+                          )}
+                          {label}
+                        </>
+                      )}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </nav>
       </div>

@@ -77,9 +77,6 @@ export function OnboardingPage() {
         <Button size="lg" variant="secondary" className="w-full" onClick={() => navigate('/join')}>
           Ya tengo una lista
         </Button>
-        <p className="text-center text-xs leading-5 text-stone-400">
-          Entra con el código que te han pasado o pasa tu lista desde tu otro dispositivo.
-        </p>
       </div>
     </div>
   );

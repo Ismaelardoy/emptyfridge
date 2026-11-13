@@ -68,8 +68,18 @@ export const listResponseDtoSchema = z.object({
 });
 export type ListResponseDto = z.infer<typeof listResponseDtoSchema>;
 
+/** Último producto añadido al hogar, para el historial sutil de la lista. */
+export const recentAdditionDtoSchema = z.object({
+  id: z.string(),
+  itemName: z.string(),
+  addedBy: memberRefSchema.nullable(),
+  createdAt: z.string(),
+});
+export type RecentAdditionDto = z.infer<typeof recentAdditionDtoSchema>;
+
 export const currentListDtoSchema = z.object({
   list: listDtoSchema.nullable(),
+  recentAdditions: z.array(recentAdditionDtoSchema),
 });
 export type CurrentListDto = z.infer<typeof currentListDtoSchema>;
 

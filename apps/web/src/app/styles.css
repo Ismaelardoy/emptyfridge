@@ -23,20 +23,37 @@
   }
 }
 
+@keyframes history-float-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .history-float {
+    animation: none;
+  }
+}
+
 @layer utilities {
+  .history-float {
+    animation: history-float-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
   .pb-safe {
     padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
   }
 
-  /* Barra de "Finalizar compra": siempre por encima de la navegación inferior. */
+  /* Barra de "Finalizar compra": siempre por encima de la navegación inferior,
+     que ahora tiene el botón de la lista elevado en el centro. */
   .finish-dock {
-    bottom: calc(5rem + env(safe-area-inset-bottom));
-  }
-
-  @media (min-width: 640px) {
-    .finish-dock {
-      bottom: calc(6rem + env(safe-area-inset-bottom));
-    }
+    bottom: calc(7rem + env(safe-area-inset-bottom));
   }
 
   @media (min-width: 1024px) {

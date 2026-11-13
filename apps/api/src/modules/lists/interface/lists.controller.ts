@@ -35,7 +35,7 @@ import { GetCurrentListUseCase } from '../application/get-current-list.use-case'
 import { MostUsedUseCase } from '../application/most-used.use-case';
 import { SuggestionsUseCase } from '../application/suggestions.use-case';
 import { UpdateItemUseCase } from '../application/update-item.use-case';
-import { toItemDto, toListDto } from './mappers';
+import { toItemDto, toListDto, toRecentAdditionDto } from './mappers';
 
 @Controller('lists')
 @UseGuards(AuthGuard)
@@ -53,8 +53,11 @@ export class ListsController {
   @Get('current')
   async current(@CurrentUser() user: User): Promise<CurrentListDto> {
     const actor = toHouseholdActor(user);
-    const list = await this.getCurrentList.execute(actor.householdId);
-    return { list: list ? toListDto(list) : null };
+    const current = await this.getCurrentList.execute(actor.householdId);
+    return {
+      list: current.list ? toListDto(current.list) : null,
+      recentAdditions: current.recentAdditions.map(toRecentAdditionDto),
+    };
   }
 
   @Post('current/items')

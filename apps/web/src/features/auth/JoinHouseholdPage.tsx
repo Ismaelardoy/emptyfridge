@@ -1,13 +1,11 @@
 import { useJoinHousehold, useLogout, useMe } from '@/features/auth/hooks';
 import { ApiError } from '@/shared/api/client';
-import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/Button';
 import { Field } from '@/shared/ui/Field';
 import { LogoMark } from '@/shared/ui/Logo';
 import { Spinner } from '@/shared/ui/Spinner';
 import {
   INVITE_CODE_REGEX,
-  MAX_INVITE_CODE_LENGTH,
   RECOVERY_CODE_REGEX,
   TRANSFER_CODE_REGEX,
   normalizeAccessCode,
@@ -17,7 +15,43 @@ import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-type JoinMode = 'invite' | 'transfer';
+type AccessKind = 'invite' | 'transfer' | 'recovery';
+
+/**
+ * Un único campo para todo: invitación del hogar, código de recuperación o
+ * vale antiguo. El tipo se deduce del contenido, así no hay dos formularios
+ * que parezcan lo mismo.
+ */
+function resolveAccessInput(value: string): { kind: AccessKind; code: string } | null {
+  const urlMatch = value.trim().match(/\/(join|transfer|recover)\/([A-Za-z0-9-]+)/i);
+  if (urlMatch) {
+    const kind = urlMatch[1]?.toLowerCase();
+    const code = normalizeAccessCode(urlMatch[2] ?? '');
+
+    if (kind === 'invite' && INVITE_CODE_REGEX.test(code)) {
+      return { kind, code };
+    }
+    if (kind === 'transfer' && TRANSFER_CODE_REGEX.test(code)) {
+      return { kind, code };
+    }
+    if (kind === 'recovery' && RECOVERY_CODE_REGEX.test(code)) {
+      return { kind, code };
+    }
+    return null;
+  }
+
+  const code = normalizeAccessCode(value);
+  if (RECOVERY_CODE_REGEX.test(code)) {
+    return { kind: 'recovery', code };
+  }
+  if (TRANSFER_CODE_REGEX.test(code)) {
+    return { kind: 'transfer', code };
+  }
+  if (INVITE_CODE_REGEX.test(code)) {
+    return { kind: 'invite', code };
+  }
+  return null;
+}
 
 export function JoinHouseholdPage() {
   const me = useMe();
@@ -26,19 +60,12 @@ export function JoinHouseholdPage() {
   const navigate = useNavigate();
   const params = useParams<{ code?: string }>();
 
-  const [mode, setMode] = useState<JoinMode>('invite');
-  const [inviteCode, setInviteCode] = useState((params.code ?? '').toUpperCase());
-  const [accessInput, setAccessInput] = useState('');
-  const code = inviteCode.trim().toUpperCase();
-  const looksLikeCode = INVITE_CODE_REGEX.test(code);
+  const [accessInput, setAccessInput] = useState(params.code ?? '');
   const routeCode = (params.code ?? '').trim().toUpperCase();
   // Solo se entra sola al abrir un enlace (/join/CODE). Escribir a mano no
   // dispara la petición: los códigos pueden tener más de 6 caracteres.
   const joiningFromLink = params.code !== undefined && INVITE_CODE_REGEX.test(routeCode);
-  const accessCode = normalizeAccessCode(accessInput);
-  const isTransferCode = TRANSFER_CODE_REGEX.test(accessCode);
-  const isRecoveryCode = RECOVERY_CODE_REGEX.test(accessCode);
-  const looksLikeAccess = isTransferCode || isRecoveryCode;
+  const access = resolveAccessInput(accessInput);
   const started = useRef(false);
   const { mutate: joinHousehold } = join;
   const alreadyInHousehold =
@@ -168,19 +195,18 @@ export function JoinHouseholdPage() {
     );
   }
 
-  const submitInvite = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (looksLikeCode) {
-      navigate(`/join/${encodeURIComponent(code)}`);
-    }
-  };
-
   const submitAccess = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (isTransferCode) {
-      navigate(`/transfer/${accessCode}`);
-    } else if (isRecoveryCode) {
-      navigate(`/recover/${accessCode}`);
+    if (!access) {
+      return;
+    }
+
+    if (access.kind === 'invite') {
+      navigate(`/join/${encodeURIComponent(access.code)}`);
+    } else if (access.kind === 'transfer') {
+      navigate(`/transfer/${access.code}`);
+    } else {
+      navigate(`/recover/${access.code}`);
     }
   };
 
@@ -198,102 +224,34 @@ export function JoinHouseholdPage() {
         </div>
       </div>
 
-      <div
-        role="tablist"
-        aria-label="Cómo quieres entrar"
-        className="mt-6 grid grid-cols-2 gap-1 rounded-2xl bg-stone-200/60 p-1"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'invite'}
-          onClick={() => setMode('invite')}
-          className={cn(
-            'rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
-            mode === 'invite'
-              ? 'bg-white text-stone-900 shadow-sm'
-              : 'text-stone-500 hover:text-stone-700',
-          )}
-        >
-          Me han invitado
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'transfer'}
-          onClick={() => setMode('transfer')}
-          className={cn(
-            'rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
-            mode === 'transfer'
-              ? 'bg-white text-stone-900 shadow-sm'
-              : 'text-stone-500 hover:text-stone-700',
-          )}
-        >
-          Ya usaba esta lista
-        </button>
-      </div>
+      <p className="mt-5 text-sm leading-6 text-stone-500">
+        Pega el enlace o el código de tu hogar. Sin cuenta ni contraseña.
+      </p>
 
-      {mode === 'invite' ? (
-        <div role="tabpanel" aria-label="Me han invitado">
-          <p className="mt-4 text-sm leading-6 text-stone-500">
-            Pega el código o abre el enlace que te han mandado. Entrarás en su lista sin crear
-            cuenta.
-          </p>
-
-          <form onSubmit={submitInvite} className="mt-6 space-y-4">
-            <Field
-              label="Código de invitación"
-              placeholder="K7M2QX"
-              value={inviteCode}
-              onChange={(event) => setInviteCode(event.target.value.toUpperCase())}
-              maxLength={MAX_INVITE_CODE_LENGTH}
-              autoCapitalize="characters"
-              autoComplete="off"
-              className="font-mono tracking-[0.2em]"
-              autoFocus
-              required
-            />
-            <Button type="submit" size="lg" className="w-full" disabled={!looksLikeCode}>
-              Entrar en la lista
-            </Button>
-          </form>
-        </div>
-      ) : (
-        <div role="tabpanel" aria-label="Ya usaba esta lista">
-          <p className="mt-4 text-sm leading-6 text-stone-500">
-            Si ya usabas esta lista y cambiaste de móvil o borraste los datos del navegador, pásala
-            a este: en el móvil viejo abre <strong>Hogar</strong> y toca{' '}
-            <strong>Iniciar sesión en otro dispositivo</strong>. Si ya no lo tienes, pide el enlace
-            o el código a otra persona de la lista.
-          </p>
-
-          <form onSubmit={submitAccess} className="mt-6 space-y-4">
-            <Field
-              label="Enlace o código"
-              placeholder="Pega aquí el enlace o el código"
-              value={accessInput}
-              onChange={(event) => setAccessInput(event.target.value)}
-              autoCapitalize="characters"
-              autoComplete="off"
-              spellCheck={false}
-              className="font-mono tracking-[0.12em]"
-              hint="Vale el enlace de 10 minutos o el código que te hayan pasado."
-              autoFocus
-              required
-            />
-            <Button type="submit" size="lg" className="w-full" disabled={!looksLikeAccess}>
-              Abrir mi lista aquí
-            </Button>
-          </form>
-        </div>
-      )}
+      <form onSubmit={submitAccess} className="mt-5 space-y-4">
+        <Field
+          label="Enlace o código"
+          placeholder="Enlace o código"
+          value={accessInput}
+          onChange={(event) => setAccessInput(event.target.value)}
+          autoCapitalize="characters"
+          autoComplete="off"
+          spellCheck={false}
+          className="font-mono tracking-[0.12em]"
+          autoFocus
+          required
+        />
+        <Button type="submit" size="lg" className="w-full" disabled={!access}>
+          Entrar en la lista
+        </Button>
+      </form>
 
       <Link
         to="/onboarding"
         className="mt-4 inline-flex items-center justify-center gap-1 py-2 text-sm font-medium text-stone-500 hover:text-stone-700"
       >
         <ArrowLeft className="h-4 w-4" />
-        Volver
+        Crear una lista nueva
       </Link>
     </div>
   );

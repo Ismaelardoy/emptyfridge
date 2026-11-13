@@ -9,12 +9,15 @@
 
 Lista de la compra familiar, móvil primero, en español. **No hay cuentas, contraseñas ni PIN.**
 
-- Cada dispositivo recibe una **identidad anónima** (nombre generado, p. ej. “Manolo 3996”) y una sesión con cookie `httpOnly`.
+- Cada dispositivo recibe una **identidad anónima** (nombre generado con humor negro de nevera, p. ej. “MortadelaTriste 4821”) y una sesión con cookie `httpOnly`.
 - Crear lista o abrir un enlace de invitación **crea la identidad y la sesión automáticamente**.
 - El enlace de invitación es el secreto: `/join/:code`. El código empieza en 6 caracteres y crece solo con el número de hogares (ADR 0007).
 - En `Hogar` → **Iniciar sesión en otro dispositivo** se muestra siempre un **código de acceso** guardable de 16 caracteres (`/recover/:code`). Se genera la primera vez y se guarda en claro (y su hash para validarlo). No se guardan emails ni teléfonos. La API del vale temporal de 10 min (`/transfer`) sigue existiendo, pero la UI ya no la usa. Ver ADR 0013.
 - La lista se sincroniza por sondeo cada **3 s** con actualizaciones optimistas.
 - La sección **Más usados** agrupa productos parecidos (plurales, tildes, erratas de una letra, “de/la”…) y permite añadirlos a la lista con un toque.
+- Al final de la lista hay un historial sutil **«Quién añadió qué»** con las altas que siguen en la lista actual (no compras cerradas ni productos eliminados), para ver los nombres anónimos junto a sus productos.
+- Al abrir la lista por primera vez en la sesión, el campo de producto recibe el foco para intentar abrir el teclado directamente.
+- Tras añadir el primer producto en un dispositivo no instalado, se sugiere **añadir la app a la pantalla de inicio**: instalación nativa si el navegador la permite (Chrome/Edge/Android) o tutorial por plataforma si no (iOS siempre manual). Solo se muestra una vez por dispositivo y nunca si ya se abrió como app.
 - La IP **solo** se usa para rate limiting. Nunca como identidad ni autorización.
 - Decisión vigente: `docs/adr/0005-acceso-anonimo.md`. `docs/ARCHITECTURE.md` contiene partes históricas.
 
@@ -159,7 +162,7 @@ Regla de dependencia: `interface → application → domain ← infrastructure`.
 | PATCH | `/household` | Cookie owner | Renombrar |
 | DELETE | `/household/members/:id` | Cookie | Expulsar (cualquier miembro) |
 | POST | `/household/transfer-ownership` | Cookie owner | Ceder la propiedad a otro miembro |
-| GET | `/lists/current` | Cookie | Lista abierta + items |
+| GET | `/lists/current` | Cookie | Lista abierta + items + altas que siguen en la lista (`recentAdditions`) |
 | POST | `/lists/current/items` | Cookie | Añadir producto |
 | POST | `/lists/current/finish` | Cookie | Finalizar compra |
 | PATCH | `/lists/items/:id` | Cookie | Actualizar/marcar producto |
@@ -175,7 +178,7 @@ Errores: `application/problem+json`, códigos estables en `packages/contracts/sr
 | Ruta | Componente | Notas |
 | --- | --- | --- |
 | `/onboarding` | `features/household/OnboardingPage.tsx` | Crear lista sin registro |
-| `/join` | `features/auth/JoinHouseholdPage.tsx` | Pestañas: código del hogar / vengo de otro móvil |
+| `/join` | `features/auth/JoinHouseholdPage.tsx` | Un solo campo que detecta invitación, código de acceso o vale |
 | `/join/:code` | `features/auth/JoinHouseholdPage.tsx` | Autoentrar; si ya estás en otro hogar, ofrece salir y entrar en esta |
 | `/transfer/:code` | `features/auth/TransferPage.tsx` | Canjea un vale antiguo; la UI ya no genera vales nuevos |
 | `/recover/:code` | `features/auth/TransferPage.tsx` (`mode="recovery"`) | Entra con el código de recuperación |
@@ -183,7 +186,9 @@ Errores: `application/problem+json`, códigos estables en `packages/contracts/sr
 | `/most-used` | `features/list/MostUsedPage.tsx` | Más usados + botón Añadir por producto |
 | `/household` | `features/household/HouseholdPage.tsx` | Compartir, miembros, renombrar, ceder propiedad, código de recuperación, cerrar sesión |
 
-- `app/ProtectedLayout.tsx`: sin sesión o sin hogar → `/onboarding`. En móvil usa cabecera + navegación inferior; en escritorio (`lg`) usa barra lateral fija y contenido centrado.
+- `app/ProtectedLayout.tsx`: sin sesión o sin hogar → `/onboarding`. En móvil usa cabecera + navegación inferior con **Lista elevada y más grande en el centro**; en escritorio (`lg`) usa barra lateral fija y contenido centrado.
+- `features/list/RecentAdditions.tsx`: historial sutil «Quién añadió qué» a partir de `recentAdditions`.
+- `features/pwa/InstallAppProvider.tsx` + `InstallAppDialog.tsx`: sugerencia de instalar la PWA tras el primer producto. La lógica de detección, evento `beforeinstallprompt`, modo standalone y tutoriales por plataforma está en `shared/lib/pwa-install.ts`.
 - `features/auth/hooks.ts`: `useMe`, `useCreateHousehold`, `useJoinHousehold`, `useRenameDisplayName`, `useRedeemTransfer`, `useCreateRecoveryCode`, `useRecoverIdentity`, `useLogout`.
 - `features/auth/api.ts`: `getMe`, `createHousehold` (`/quick/household`), `joinHousehold` (`/quick/join`), `renameDisplayName` (`PATCH /auth/me`), `redeemTransfer` (`/quick/transfer`), `createRecoveryCode` (`/auth/recovery-code`), `recoverIdentity` (`/quick/recover`).
 - `features/list/hooks.ts`: `useCurrentList` (polling 3 s), `useMostUsed`, mutaciones optimistas.
@@ -237,7 +242,7 @@ El servicio `migrate` de Docker aplica migraciones antes de arrancar la API.
 `Hogar` → “Cerrar sesión en este dispositivo” → `POST /auth/logout` borra la sesión y la cookie; la lista anterior no se toca. Después se puede entrar en otra con su código. Si abres `/join/:code` estando ya en otro hogar, `POST /quick/join` responde `ALREADY_IN_HOUSEHOLD` y la UI ofrece “Salir de la otra lista y entrar en esta”: hace logout y reintenta el join con una identidad nueva.
 
 ### Sincronización
-`useCurrentList` hace polling cada 3 s. Las mutaciones locales son optimistas. No hay SSE/WebSockets.
+`useCurrentList` hace polling cada 3 s. Las mutaciones locales son optimistas. La misma respuesta incluye `recentAdditions` para el historial «Quién añadió qué». No hay SSE/WebSockets.
 
 ### Sesiones sin caducidad y cierre remoto
 `IssueSessionUseCase` crea la sesión con `expires_at = null` (no caduca). `AuthGuard` reemite la cookie de 400 días en cada petición autenticada para esquivar el límite del navegador. `POST /auth/sessions/revoke-others` borra todas las sesiones de la identidad menos la actual (ADR 0011).
@@ -265,6 +270,10 @@ Al entrar en `Hogar`, si la identidad aún no tiene código, `POST /auth/recover
 | Entrar en otro dispositivo / recuperar identidad | `generate-recovery-code.use-case.ts`, `recover-identity.use-case.ts`, `users.recovery_code`, `users.recovery_code_hash`, `TransferPage.tsx` (`recovery`), tarjeta “Iniciar sesión en otro dispositivo” de `HouseholdPage.tsx` (generación automática si `recoveryCode` es null) |
 | Cambiar invitación/compartir | `JoinHouseholdPage.tsx`, `HouseholdPage.tsx`, `quick.controller.ts` |
 | Más usados / agrupación | `group-product-names.ts`, `most-used.use-case.ts`, `MostUsedPage.tsx`, `SuggestionsUseCase` |
+| Historial de quién añadió qué | `recentAdditions` calculado desde los items de la lista abierta en `get-current-list.use-case.ts`, `RecentAdditions.tsx` |
+| Navegación inferior / icono central grande | `ProtectedLayout.tsx`, `styles.css` (`finish-dock`) |
+| Entrada con código unificado | `JoinHouseholdPage.tsx` (`resolveAccessInput`) |
+| Sugerir instalar la app / tutorial PWA | `shared/lib/pwa-install.ts`, `features/pwa/*`, `notifyItemAdded` en `features/list/hooks.ts` |
 | Lista/productos | `features/list/*`, `modules/lists/*` |
 | Logo/marca | `apps/web/public/brand/`, `apps/web/public/icons/`, `Logo.tsx`, `index.html`, `vite.config.ts`, `README.md` |
 | Estilos/UI | `app/styles.css`, `shared/ui/*` |
@@ -280,6 +289,7 @@ Al entrar en `Hogar`, si la identidad aún no tiene código, `POST /auth/recover
 - Una identidad = un hogar (`unique user_id`). No implementar multi-hogar sin cambiar el modelo y la UI. Si una identidad se queda sin hogar (expulsión o fallo al crear/unirse), se elimina automáticamente; las sesiones, vales y membresías caen en cascada.
 - Propietarios: el creador y el primero que entra. Los siguientes son miembros (ADR 0012). Cualquier miembro puede invitar compartiendo el enlace y expulsar a otros; si se expulsa al owner, el miembro más antiguo que queda toma el relevo.
 - Todas las consultas de listas/items filtran por `household_id`.
+- La instalación de la PWA se detecta con `display-mode: standalone` y `navigator.standalone`; la sugerencia se muestra una vez por dispositivo. **En iOS Safari no se puede instalar por código**: se enseña el tutorial manual. No prometer instalación automática ahí.
 - Cookies `httpOnly`, `SameSite=Lax`, `Secure` con HTTPS; token solo hasheado en BD.
 - Las sesiones **no caducan**. La cookie se reemite en cada visita con 400 días (límite del navegador). La API permite cerrar el resto (`POST /auth/sessions/revoke-others`), pero la UI ya no muestra esa tarjeta (ADR 0011).
 - No guardar emails ni datos personales.
@@ -306,6 +316,7 @@ Si hay migración nueva, comprobar que `migrate` termina sin error y que el E2E 
 - El `README` y `docs/ARCHITECTURE.md` pueden tener secciones históricas de cuentas/PIN. La verdad actual está en este mapa y en `docs/adr/0005-acceso-anonimo.md`.
 - `random/` está ignorada en Git y contiene la imagen original del logo oficial. No borrar localmente.
 - El service worker de la PWA puede servir un bundle viejo; en pruebas, recarga forzada o contexto limpio.
+- `beforeinstallprompt` solo existe en navegadores compatibles (Chrome/Edge/Android). Si la app está instalada pero se abre en una pestaña normal, no siempre se puede detectar; por eso el modo standalone es la señal principal.
 - `docker compose up -d --build` es la forma fiable de probar migraciones + API + web juntos.
 - El editor/entorno puede tener problemas con acentos en scripts de PowerShell; para Playwright usa selectores ASCII o `getByRole` con regex si hace falta.
 - **Vercel + Render**: la web debe llamar a `/api` y Vercel proxificar a Render (`vercel.json`). Llamar directamente a Render desde Vercel rompe la cookie `SameSite=Lax` por ser otro sitio.

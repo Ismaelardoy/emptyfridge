@@ -10,6 +10,7 @@ import { useOutletContext } from 'react-router-dom';
 import { AddItemForm } from './AddItemForm';
 import { FinishDialog } from './FinishDialog';
 import { ItemRow } from './ItemRow';
+import { RecentAdditions } from './RecentAdditions';
 import { useCurrentList, useFinishList, useSuggestions } from './hooks';
 
 function ItemSection({ title, items }: { title: string; items: ItemDto[] }) {
@@ -40,6 +41,7 @@ export function ListPage() {
   const [finishOpen, setFinishOpen] = useState(false);
 
   const items = current.data?.list?.items ?? [];
+  const recentAdditions = current.data?.recentAdditions ?? [];
   const pending = items.filter((item) => !item.checked);
   const checked = items.filter((item) => item.checked);
 
@@ -60,13 +62,16 @@ export function ListPage() {
           </Button>
         </div>
       ) : items.length === 0 ? (
-        <div className="mt-4 flex flex-col items-center rounded-3xl border border-dashed border-stone-200 bg-white/60 px-6 py-10 text-center">
-          <LogoMark className="mb-3 h-14 w-14 opacity-80" />
-          <p className="text-sm font-semibold text-stone-700">
-            La lista está vacía, {user.displayName}
-          </p>
-          <p className="mt-1 text-xs text-stone-400">Añade lo que falta y aparecerá aquí.</p>
-        </div>
+        <>
+          <div className="mt-4 flex flex-col items-center rounded-3xl border border-dashed border-stone-200 bg-white/60 px-6 py-10 text-center">
+            <LogoMark className="mb-3 h-14 w-14 opacity-80" />
+            <p className="text-sm font-semibold text-stone-700">
+              La lista está vacía, {user.displayName}
+            </p>
+            <p className="mt-1 text-xs text-stone-400">Añade lo que falta y aparecerá aquí.</p>
+          </div>
+          <RecentAdditions entries={recentAdditions} />
+        </>
       ) : (
         <div className="pt-2 pb-40">
           {pending.length === 0 ? (
@@ -77,6 +82,8 @@ export function ListPage() {
 
           <ItemSection title="Pendientes" items={pending} />
           <ItemSection title="En el carrito" items={checked} />
+
+          <RecentAdditions entries={recentAdditions} />
         </div>
       )}
 

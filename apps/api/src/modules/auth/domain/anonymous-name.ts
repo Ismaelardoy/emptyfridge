@@ -1,20 +1,53 @@
 import { randomInt } from 'node:crypto';
 
 /**
- * Diez ejemplos de identidad anónima, todos con guasa.
- * Se elige uno al azar y se le añade un número para que sea único.
+ * Identidades anónimas con humor negro de nevera: comida olvidada, sobras
+ * sospechosas y pequeños crímenes domésticos. Se elige una al azar y se le
+ * añade un número para que sea única.
  */
 const NAMES = [
+  'LonchaDeBacon',
+  'BrikDeLeche',
+  'CacaoVacío',
   'TostadoraAsesina',
   'ElQueNoLavaLosPlatos',
   'ComeYNoPaga',
   'ReyDelGazpacho',
-  'LaDelAbanico',
   'SeñorDeLaNevera',
   'AceitunaBrava',
-  'ElQueApagaLaLuz',
   'DoñaPescaíto',
-  'BuscadorDeOfertas',
+  'ElQueApagaLaLuz',
+  'YogurCaducado',
+  'SobrasDelDomingo',
+  'FideoPegado',
+  'ElDelTupperAjeno',
+  'CroquetaFugitiva',
+  'PanDuro',
+  'CaducadoAyer',
+  'ElQueSeComeTuPostre',
+  'MantequillaRancia',
+  'HuevoRoto',
+  'PechugaCongelada',
+  'ElLavavajillasHumano',
+  'ChorizoOlvidado',
+  'ElQueNoReponeElPapel',
+  'BoteDeMayonesa',
+  'GambaPasada',
+  'MortadelaTriste',
+  'SalchichaSospechosa',
+  'CebollaEnElFondo',
+  'ElFantasmaDelFrigo',
+  'RestosDelGuiso',
+  'ElQueNoTiraLaBasura',
+  'YogurDelMesPasado',
+  'ElUltimoChorizo',
+  'SobrasConPelusilla',
+  'QuesoCaducado',
+  'ElQueChupaLaCuchara',
+  'AtunDelAñoPasado',
+  'PescadoDeMartes',
+  'ElDelFondoDelFrigo',
+  'MorcillaTraicionera',
 ] as const;
 
 /** Nombre anónimo y gracioso para no pedir registro. */

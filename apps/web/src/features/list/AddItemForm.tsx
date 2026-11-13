@@ -1,8 +1,12 @@
 import { Button } from '@/shared/ui/Button';
 import type { Unit } from '@emptyfridge/contracts';
 import { Plus, SlidersHorizontal } from 'lucide-react';
-import { type FormEvent, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useAddItem } from './hooks';
+
+// Solo en la primera entrada de la sesión: al abrir la app con la lista dentro,
+// el teclado aparece listo para escribir sin robar el foco en cada navegación.
+let autofocusAttempted = false;
 
 const UNIT_OPTIONS: { value: Unit; label: string }[] = [
   { value: 'ud', label: 'ud' },
@@ -21,6 +25,23 @@ export function AddItemForm({ suggestions }: { suggestions: string[] }) {
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState<Unit | ''>('');
   const [showDetails, setShowDetails] = useState(false);
+
+  useEffect(() => {
+    if (autofocusAttempted) {
+      return;
+    }
+    autofocusAttempted = true;
+
+    // Sin cleanup: en StrictMode el primer montaje se desmonta y el ref vuelve
+    // a apuntar al input del segundo montaje, así que el foco sigue llegando.
+    const focus = () => {
+      if (document.activeElement === document.body) {
+        inputRef.current?.focus({ preventScroll: true });
+      }
+    };
+    focus();
+    window.setTimeout(focus, 180);
+  }, []);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

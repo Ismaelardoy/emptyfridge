@@ -26,9 +26,19 @@ test('lista sin registro, más usados, invitación y sincronización', async ({ 
     await dialog.getByRole('button', { name: 'Finalizar', exact: true }).click();
     await expect(dialog).toBeHidden();
     await expect(page.getByText(/La lista está vacía/)).toBeVisible();
+    // El historial solo muestra altas que siguen en la lista actual.
+    await expect(page.getByText('Quién añadió qué')).toHaveCount(0);
   };
 
   await addProduct('Leche');
+
+  // Tras el primer producto se sugiere instalar la PWA. En este entorno no hay
+  // diálogo nativo, así que se muestra el tutorial manual.
+  const installDialog = page.getByRole('dialog');
+  await expect(installDialog.getByRole('heading', { name: /pantalla de inicio/i })).toBeVisible();
+  await installDialog.getByRole('button', { name: 'Ahora no' }).click();
+  await expect(installDialog).toBeHidden();
+
   await addProduct('Pan');
   await finishPurchase();
 
@@ -74,6 +84,11 @@ test('lista sin registro, más usados, invitación y sincronización', async ({ 
   await expect(productInput).toBeVisible();
   await secondInput.fill('Café');
   await secondPage.getByRole('button', { name: 'Añadir producto' }).click();
+  const secondInstallDialog = secondPage.getByRole('dialog');
+  await expect(
+    secondInstallDialog.getByRole('heading', { name: /pantalla de inicio/i }),
+  ).toBeVisible();
+  await secondInstallDialog.getByRole('button', { name: 'Ahora no' }).click();
   await expect(page.getByRole('listitem').filter({ hasText: 'Café' })).toBeVisible({
     timeout: 10_000,
   });

@@ -1,6 +1,6 @@
+import { AuthScene } from '@/features/auth/AuthScene';
 import { useMe, useRecoverIdentity, useRedeemTransfer } from '@/features/auth/hooks';
 import { Button } from '@/shared/ui/Button';
-import { LogoMark } from '@/shared/ui/Logo';
 import { Spinner } from '@/shared/ui/Spinner';
 import {
   RECOVERY_CODE_REGEX,
@@ -8,9 +8,8 @@ import {
   normalizeRecoveryCode,
   normalizeTransferCode,
 } from '@emptyfridge/contracts';
-import { ArrowLeft } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 
 type OpenMode = 'transfer' | 'recovery';
 
@@ -54,9 +53,11 @@ export function TransferPage({ mode = 'transfer' }: { mode?: OpenMode }) {
 
   if (me.isLoading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <Spinner />
-      </div>
+      <AuthScene>
+        <div className="flex flex-1 items-center justify-center">
+          <Spinner />
+        </div>
+      </AuthScene>
     );
   }
 
@@ -67,49 +68,52 @@ export function TransferPage({ mode = 'transfer' }: { mode?: OpenMode }) {
   const failed = !looksLikeCode || redeem.isError;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center bg-stone-50 px-5 py-10 sm:max-w-xl sm:px-8">
-      <div className="flex items-start gap-3">
-        <LogoMark className="h-14 w-14" />
-        <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-700">
-            ErFrigovacio
-          </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-stone-900">
-            {failed ? 'No se pudo abrir' : 'Abriendo tu lista…'}
-          </h1>
-        </div>
-      </div>
-
-      {failed ? (
-        <>
-          <p className="mt-4 text-sm leading-6 text-stone-500">
-            {looksLikeCode && redeem.isError
-              ? redeem.error.message
-              : mode === 'transfer'
-                ? 'Este enlace no es válido. Pide otro en el móvil que ya tiene la lista.'
-                : 'Este código no es válido. Revisa que esté completo.'}
-          </p>
-          <Button className="mt-6 w-full" onClick={() => navigate('/join', { replace: true })}>
-            Probar con otro código
-          </Button>
-          <Link
-            to="/onboarding"
-            className="mt-3 inline-flex items-center justify-center gap-1 py-2 text-sm font-medium text-stone-500 hover:text-stone-700"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Volver
-          </Link>
-        </>
-      ) : (
-        <>
-          <p className="mt-4 text-sm leading-6 text-stone-500">
-            Un momento, estamos trayendo tu identidad a este móvil.
-          </p>
-          <div className="mt-8 flex justify-center">
-            <Spinner />
-          </div>
-        </>
-      )}
-    </div>
+    <AuthScene>
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-8">
+        <p className="auth-rise text-center text-[10px] font-bold tracking-[0.34em] text-stone-600 uppercase">
+          erfrigovacio
+        </p>
+        {failed ? (
+          <>
+            <h1 className="auth-rise text-center text-[1.9rem] font-black tracking-[-0.04em] text-stone-900">
+              No se pudo abrir
+            </h1>
+            <p className="auth-rise mt-2 text-center text-sm leading-6 text-stone-600">
+              {looksLikeCode && redeem.isError
+                ? redeem.error.message
+                : mode === 'transfer'
+                  ? 'Este enlace no es válido. Pide otro en el móvil que ya tiene la lista.'
+                  : 'Este código no es válido. Revisa que esté completo.'}
+            </p>
+            <div className="mt-6 space-y-3">
+              <Button
+                size="lg"
+                className="w-full shadow-[0_12px_28px_-14px_rgba(5,150,105,0.75)]"
+                onClick={() => navigate('/join', { replace: true })}
+              >
+                Probar con otro código
+              </Button>
+              <button
+                type="button"
+                onClick={() => navigate('/onboarding', { replace: true })}
+                className="mx-auto block rounded-xl px-2 py-1.5 text-sm font-medium text-stone-600 transition-colors hover:text-stone-800"
+              >
+                Crear una lista nueva
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h1 className="auth-rise text-center text-[1.9rem] font-black tracking-[-0.04em] text-stone-900">
+              Abriendo tu lista…
+            </h1>
+            <p className="auth-rise mt-2 text-center text-sm leading-6 text-stone-600">
+              Un momento, estamos trayendo tu identidad a este móvil.
+            </p>
+            <Spinner className="py-4" label="" />
+          </>
+        )}
+      </main>
+    </AuthScene>
   );
 }

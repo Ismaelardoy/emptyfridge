@@ -2,15 +2,15 @@ import { cn } from '@/shared/lib/cn';
 import { Loader2 } from 'lucide-react';
 import type { ButtonHTMLAttributes } from 'react';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'whatsapp';
 type Size = 'sm' | 'md' | 'lg' | 'icon';
 
 const VARIANTS: Record<Variant, string> = {
-  primary:
-    'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-emerald-300',
+  primary: 'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800',
   secondary: 'bg-white text-stone-800 ring-1 ring-stone-200 hover:bg-stone-50 active:bg-stone-100',
   ghost: 'text-stone-600 hover:bg-stone-100 active:bg-stone-200',
   danger: 'bg-red-600 text-white hover:bg-red-700 active:bg-red-800',
+  whatsapp: 'bg-[#25D366] text-[#04331f] hover:bg-[#20c95f] active:bg-[#1bbc58]',
 };
 
 const SIZES: Record<Size, string> = {
@@ -38,7 +38,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-70',
+        'inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition-[color,background-color,border-color,box-shadow,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-70',
         VARIANTS[variant],
         SIZES[size],
         className,

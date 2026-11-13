@@ -1,4 +1,5 @@
 import type { AppOutletContext } from '@/app/ProtectedLayout';
+import { InviteCard } from '@/features/household/InviteCard';
 import { Button } from '@/shared/ui/Button';
 import { LogoMark } from '@/shared/ui/Logo';
 import { Spinner } from '@/shared/ui/Spinner';
@@ -71,47 +72,53 @@ export function ListPage() {
           </Button>
         </div>
       ) : items.length === 0 ? (
-        lastFinished ? (
-          <div className="mt-4 flex flex-col items-center rounded-3xl border border-emerald-200 bg-emerald-50/60 px-6 py-8 text-center">
-            <span className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm">
-              <CheckCheck className="h-7 w-7" />
-            </span>
-            <p className="text-base font-semibold text-stone-800">Compra finalizada</p>
-            <p className="mt-1 text-xs leading-5 text-stone-500">
-              {lastFinished.closedBy
-                ? lastFinished.closedBy.id === user.id
-                  ? 'La has finalizado tú.'
-                  : `La finalizó ${lastFinished.closedBy.displayName}.`
-                : 'La compra se ha cerrado.'}
-              {lastFinished.itemCount > 0
-                ? ` ${lastFinished.itemCount} ${
-                    lastFinished.itemCount === 1 ? 'producto' : 'productos'
-                  }.`
-                : ''}
-            </p>
-            <p className="mt-1 text-xs text-stone-400">Si ha sido un error, puedes recuperarla.</p>
+        <div className="mt-4 space-y-3">
+          {lastFinished ? (
+            <div className="flex flex-col items-center rounded-3xl border border-emerald-200 bg-emerald-50/60 px-6 py-8 text-center">
+              <span className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm">
+                <CheckCheck className="h-7 w-7" />
+              </span>
+              <p className="text-base font-semibold text-stone-800">Compra finalizada</p>
+              <p className="mt-1 text-xs leading-5 text-stone-500">
+                {lastFinished.closedBy
+                  ? lastFinished.closedBy.id === user.id
+                    ? 'La has finalizado tú.'
+                    : `La finalizó ${lastFinished.closedBy.displayName}.`
+                  : 'La compra se ha cerrado.'}
+                {lastFinished.itemCount > 0
+                  ? ` ${lastFinished.itemCount} ${
+                      lastFinished.itemCount === 1 ? 'producto' : 'productos'
+                    }.`
+                  : ''}
+              </p>
+              <p className="mt-1 text-xs text-stone-400">
+                Si ha sido un error, puedes recuperarla.
+              </p>
 
-            <Button
-              size="lg"
-              variant="secondary"
-              className="mt-4 w-full"
-              loading={reopen.isPending}
-              onClick={() => reopen.mutate(lastFinished.id)}
-            >
-              <Undo2 className="h-5 w-5" />
-              Revertir compra
-            </Button>
-            <p className="mt-2 text-[10px] text-stone-300">Solo durante 30 minutos.</p>
-          </div>
-        ) : (
-          <div className="mt-4 flex flex-col items-center rounded-3xl border border-dashed border-stone-200 bg-white/60 px-6 py-10 text-center">
-            <LogoMark className="mb-3 h-14 w-14 opacity-80" />
-            <p className="text-sm font-semibold text-stone-700">
-              La lista está vacía, {user.displayName}
-            </p>
-            <p className="mt-1 text-xs text-stone-400">Añade lo que falta y aparecerá aquí.</p>
-          </div>
-        )
+              <Button
+                size="lg"
+                variant="secondary"
+                className="mt-4 w-full"
+                loading={reopen.isPending}
+                onClick={() => reopen.mutate(lastFinished.id)}
+              >
+                <Undo2 className="h-5 w-5" />
+                Revertir compra
+              </Button>
+              <p className="mt-2 text-[10px] text-stone-300">Solo durante 30 minutos.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center rounded-3xl border border-dashed border-stone-200 bg-white/60 px-6 py-10 text-center">
+              <LogoMark className="mb-3 h-14 w-14 opacity-80" />
+              <p className="text-sm font-semibold text-stone-700">
+                La lista está vacía, {user.displayName}
+              </p>
+              <p className="mt-1 text-xs text-stone-400">Añade lo que falta y aparecerá aquí.</p>
+            </div>
+          )}
+
+          <InviteCard />
+        </div>
       ) : (
         <div className="list-bottom-space pt-2">
           {pending.length === 0 ? (

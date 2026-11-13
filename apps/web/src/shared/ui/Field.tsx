@@ -17,7 +17,7 @@ export function Field({
 
   return (
     <div className="space-y-1.5">
-      <label htmlFor={inputId} className="block text-sm font-medium text-stone-700">
+      <label htmlFor={inputId} className="block text-[15px] font-medium text-stone-700">
         {label}
       </label>
       <input

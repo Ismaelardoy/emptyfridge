@@ -192,7 +192,12 @@ Errores: `application/problem+json`, códigos estables en `packages/contracts/sr
 - En la lista, la barra de añadir es compacta y se queda fija arriba. Al escribir, se abren solos los ajustes de cantidad/unidad y no hay desplegable de sugerencias. En móvil, «Finalizar compra» es un botón fijo a todo el ancho fuera de la barra inferior; en escritorio, un botón fijo en la barra lateral. Las tarjetas de producto son de una línea: cantidad junto al nombre y sin autor.
 - `features/list/RecentAdditions.tsx`: historial sutil «Quién añadió qué» a partir de `recentAdditions`; se muestra al final de `Hogar`.
 - `features/pwa/InstallAppProvider.tsx` + `InstallAppDialog.tsx`: sugerencia de instalar la PWA tras el primer producto. La lógica de detección, evento `beforeinstallprompt`, modo standalone y tutoriales por plataforma está en `shared/lib/pwa-install.ts`.
+- `features/auth/AuthScene.tsx`: escena de entrada clara y minimalista compartida por onboarding, acceso y recuperación: fondo crema, manchas de color y una nevera gigante que se mueve despacio y cambia de expresión entre seis caras (`public/brand/fridges/*.webp`). Sin logo enmarcado ni scroll en móvil. Expone `AuthScene`; los estilos `auth-*` viven en `app/styles.css` (con `prefers-reduced-motion`).
+- `features/household/onboarding-copy.ts`: las frases de humor que se turnan en la portada cada ~13 s (título + subtítulo), con fundido suave y sin saltos de altura. Con movimiento reducido se queda la primera.
+- `features/household/InviteCard.tsx`: fila compacta y sin tarjeta en la lista vacía (botón «Compartir lista» con icono de WhatsApp + copiar y compartir nativo).
+- `shared/lib/invite.ts`: enlace/mensaje de invitación y acciones de compartir/copiar reutilizadas por `InviteCard` y `HouseholdPage`.
 - `features/auth/hooks.ts`: `useMe`, `useCreateHousehold`, `useJoinHousehold`, `useRenameDisplayName`, `useRedeemTransfer`, `useCreateRecoveryCode`, `useRecoverIdentity`, `useLogout`.
+- `shared/lib/credentials.ts`: guarda el código de acceso en el gestor de contraseñas del navegador con `navigator.credentials.store`. Chrome/Edge/Android abren el aviso nativo; Safari no lo soporta y la tarjeta de Hogar ofrece copiar el código. `/join` marca el campo como `current-password` (con un usuario oculto) para que el gestor lo autorrellene.
 - `features/auth/api.ts`: `getMe`, `createHousehold` (`/quick/household`), `joinHousehold` (`/quick/join`), `renameDisplayName` (`PATCH /auth/me`), `redeemTransfer` (`/quick/transfer`), `createRecoveryCode` (`/auth/recovery-code`), `recoverIdentity` (`/quick/recover`).
 - `features/list/hooks.ts`: `useCurrentList` (polling 3 s), `useMostUsed`, mutaciones optimistas.
 - `features/list/MostUsedPage.tsx`: lista agrupada y botón “Añadir”.
@@ -254,13 +259,16 @@ El servicio `migrate` de Docker aplica migraciones antes de arrancar la API.
 `Hogar` → botón corona de un miembro → `POST /household/transfer-ownership` con `{memberId}` → transacción: el actor pasa a `member` y el destino a `owner`. Solo un propietario actual puede; tras ceder, queda un único owner (ADR 0010).
 
 ### Entrar en otro dispositivo (código visible)
-Al entrar en `Hogar`, si la identidad aún no tiene código, `POST /auth/recovery-code` genera un código `XXXX-XXXX-XXXX-XXXX` de 16 caracteres. El código se guarda en `users.recovery_code` y se devuelve en `/auth/me`, por lo que **se muestra siempre** en la tarjeta **Iniciar sesión en otro dispositivo**. En el otro dispositivo `/recover/<código>` → `POST /quick/recover` lo valida contra `recovery_code_hash` y emite sesión para el mismo `user_id`. La UI no regenera el código. La API del vale temporal de 10 min (`/transfer`) sigue existiendo, pero la UI ya no la usa. Ver ADR 0013.
+Al entrar en `Hogar`, si la identidad aún no tiene código, `POST /auth/recovery-code` genera un código `XXXX-XXXX-XXXX-XXXX` de 16 caracteres. El código se guarda en `users.recovery_code` y se devuelve en `/auth/me`, por lo que **se muestra siempre** en la tarjeta **Iniciar sesión en otro dispositivo**. Al aparecer, la web pide una vez al navegador que lo guarde como contraseña del sitio (`navigator.credentials.store`, solo Chrome/Edge/Android) y ofrece el botón «Guardar en el móvil». En el otro dispositivo `/recover/<código>` → `POST /quick/recover` lo valida contra `recovery_code_hash` y emite sesión para el mismo `user_id`. La UI no regenera el código. La API del vale temporal de 10 min (`/transfer`) sigue existiendo, pero la UI ya no la usa. Ver ADR 0013.
 
 ### Más usados + agrupación
 `GET /lists/most-used` agrupa productos por parecido: plurales, tildes, mayúsculas, puntuación, palabras vacías y erratas de una letra. Devuelve `{ products: [{ name, count }] }`. En UI: `/most-used`, lista ordenada por uso con botón “Añadir”.
 
 ### Finalizar y revertir compra
 `POST /lists/current/finish` cierra la lista sin marcar ni desmarcar productos. Durante 30 minutos, `GET /lists/current` devuelve `lastFinished` y la pantalla vacía muestra «Revertir compra»; `POST /lists/:id/reopen` la reabre tal cual estaba si no hay otra lista abierta.
+
+### Compartir desde la lista vacía
+Con la lista vacía (al principio o después de finalizar), debajo de la tarjeta de estado aparece `InviteCard`: botón grande de WhatsApp, «Copiar enlace» y compartir nativo si el navegador lo permite, más el código del hogar y un enlace a `Hogar`. Se comparte desde la propia lista, sin navegar antes: el portapapeles y `navigator.share` necesitan el gesto del usuario y lo perderían tras un cambio de ruta.
 
 ## 11. Dónde tocar cada cosa
 
@@ -274,7 +282,10 @@ Al entrar en `Hogar`, si la identidad aún no tiene código, `POST /auth/recover
 | Cerrar sesión en otros móviles | `revoke-other-sessions.use-case.ts`, `auth.controller.ts` (`POST /auth/sessions/revoke-others`). Solo API: la UI ya no muestra esa tarjeta |
 | Ceder la propiedad del hogar | `transfer-ownership.use-case.ts`, `household.controller.ts`, `HouseholdPage.tsx` |
 | Entrar en otro dispositivo / recuperar identidad | `generate-recovery-code.use-case.ts`, `recover-identity.use-case.ts`, `users.recovery_code`, `users.recovery_code_hash`, `TransferPage.tsx` (`recovery`), tarjeta “Iniciar sesión en otro dispositivo” de `HouseholdPage.tsx` (generación automática si `recoveryCode` es null) |
+| Que el móvil recuerde el código de acceso | `shared/lib/credentials.ts`, tarjeta de `HouseholdPage.tsx` («Guardar en el móvil» + aviso automático una vez), formulario de `JoinHouseholdPage.tsx` (`current-password` para autorrelleno) |
 | Cambiar invitación/compartir | `JoinHouseholdPage.tsx`, `HouseholdPage.tsx`, `quick.controller.ts` |
+| Compartir desde la lista vacía | `InviteCard.tsx`, `shared/lib/invite.ts`, estados vacíos de `ListPage.tsx` |
+| Diseño de las pantallas de entrada | `features/auth/AuthScene.tsx`, utilidades `auth-*` de `app/styles.css`, `OnboardingPage.tsx`, `JoinHouseholdPage.tsx`, `TransferPage.tsx` |
 | Más usados / agrupación | `group-product-names.ts`, `most-used.use-case.ts`, `MostUsedPage.tsx`, `SuggestionsUseCase` |
 | Historial de quién añadió qué (en Hogar) | `recentAdditions` calculado desde los items de la lista abierta en `get-current-list.use-case.ts`, `RecentAdditions.tsx`, `HouseholdPage.tsx` |
 | Navegación inferior compacta / botón Lista sin sobresalir | `ProtectedLayout.tsx`, `styles.css` (`list-bottom-space`) |
@@ -291,6 +302,7 @@ Al entrar en `Hogar`, si la identidad aún no tiene código, `POST /auth/recover
 
 - **No reintroducir cuentas, login, PIN ni preguntas de seguridad.** La identidad es anónima. Para cambiar de dispositivo se usa el código de recuperación guardable (ADR 0008), nunca usuario+contraseña. No se guardan emails ni teléfonos. La API del vale temporal (ADR 0006) sigue por compatibilidad, pero la UI no la usa.
 - **No usar la IP como identidad/autorización.** La IP solo puede usarse para rate limiting.
+- **El código de acceso nunca se guarda en `localStorage` en claro.** Para recordarlo se usa el gestor de contraseñas del navegador (`navigator.credentials.store`); si el navegador no lo soporta (iOS Safari, Firefox), se ofrece copiarlo. No prometer guardado automático donde la API no existe.
 - UI en **español**, móvil primero, botones grandes, sin menús escondidos.
 - Una identidad = un hogar (`unique user_id`). No implementar multi-hogar sin cambiar el modelo y la UI. Si una identidad se queda sin hogar (expulsión o fallo al crear/unirse), se elimina automáticamente; las sesiones, vales y membresías caen en cascada.
 - Propietarios: el creador y el primero que entra. Los siguientes son miembros (ADR 0012). Cualquier miembro puede invitar compartiendo el enlace y expulsar a otros; si se expulsa al owner, el miembro más antiguo que queda toma el relevo.

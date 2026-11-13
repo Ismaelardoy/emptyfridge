@@ -1,8 +1,8 @@
+import { AuthScene } from '@/features/auth/AuthScene';
 import { useJoinHousehold, useLogout, useMe } from '@/features/auth/hooks';
 import { ApiError } from '@/shared/api/client';
 import { Button } from '@/shared/ui/Button';
 import { Field } from '@/shared/ui/Field';
-import { LogoMark } from '@/shared/ui/Logo';
 import { Spinner } from '@/shared/ui/Spinner';
 import {
   INVITE_CODE_REGEX,
@@ -10,9 +10,8 @@ import {
   TRANSFER_CODE_REGEX,
   normalizeAccessCode,
 } from '@emptyfridge/contracts';
-import { ArrowLeft } from 'lucide-react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 type AccessKind = 'invite' | 'transfer' | 'recovery';
@@ -91,9 +90,11 @@ export function JoinHouseholdPage() {
 
   if (me.isLoading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <Spinner />
-      </div>
+      <AuthScene>
+        <div className="flex flex-1 items-center justify-center">
+          <Spinner />
+        </div>
+      </AuthScene>
     );
   }
 
@@ -122,76 +123,73 @@ export function JoinHouseholdPage() {
 
   if (joiningFromLink) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center bg-stone-50 px-5 py-10 sm:max-w-xl sm:px-8">
-        <div className="flex items-start gap-3">
-          <LogoMark className="h-14 w-14" />
-          <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-700">
-              ErFrigovacio
-            </p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-stone-900">
-              {join.isError
-                ? alreadyInHousehold
-                  ? 'Ya estás en otra lista'
-                  : 'No se pudo entrar'
-                : 'Entrando en la lista…'}
-            </h1>
-          </div>
-        </div>
-
-        {join.isError ? (
-          <>
-            <p className="mt-4 text-sm leading-6 text-stone-500">
-              {alreadyInHousehold
-                ? 'Este móvil ya está en otra lista. Si quieres entrar en esta, sal de la actual. La otra lista no se borra.'
-                : join.error.message}
-            </p>
-            {alreadyInHousehold ? (
-              <>
-                <Button
-                  className="mt-6 w-full"
-                  loading={logout.isPending}
-                  onClick={switchHousehold}
-                >
-                  Salir de la otra lista y entrar en esta
-                </Button>
-                <Link
-                  to="/"
-                  className="mt-3 inline-flex items-center justify-center gap-1 py-2 text-sm font-medium text-stone-500 hover:text-stone-700"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Volver a mi lista
-                </Link>
-              </>
-            ) : (
-              <>
-                <Button
-                  className="mt-6 w-full"
-                  onClick={() => navigate('/onboarding', { replace: true })}
-                >
-                  Crear mi lista
-                </Button>
-                <Link
-                  to="/onboarding"
-                  className="mt-3 inline-flex items-center justify-center gap-1 py-2 text-sm font-medium text-stone-500 hover:text-stone-700"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Volver
-                </Link>
-              </>
-            )}
-          </>
-        ) : (
-          <>
-            <p className="mt-4 text-sm leading-6 text-stone-500">
-              Un momento, te estamos metiendo en la lista del hogar.
-            </p>
-            <div className="mt-8 flex justify-center">
-              <Spinner />
-            </div>
-          </>
-        )}
-      </div>
+      <AuthScene>
+        <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-8">
+          <p className="auth-rise text-center text-[10px] font-bold tracking-[0.34em] text-stone-600 uppercase">
+            erfrigovacio
+          </p>
+          {join.isError ? (
+            <>
+              <h1 className="auth-rise text-center text-2xl font-black tracking-[-0.03em] text-stone-900">
+                {alreadyInHousehold ? 'Ya estás en otra lista' : 'No se pudo entrar'}
+              </h1>
+              <p className="auth-rise mt-2 text-center text-sm leading-6 text-stone-600">
+                {alreadyInHousehold
+                  ? 'Este móvil ya está en otra lista. Si quieres entrar en esta, sal de la actual. La otra lista no se borra.'
+                  : join.error.message}
+              </p>
+              <div className="mt-6 space-y-3">
+                {alreadyInHousehold ? (
+                  <>
+                    <Button
+                      size="lg"
+                      className="w-full shadow-[0_12px_28px_-14px_rgba(5,150,105,0.75)]"
+                      loading={logout.isPending}
+                      onClick={switchHousehold}
+                    >
+                      Salir de la otra lista y entrar en esta
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/', { replace: true })}
+                      className="mx-auto block rounded-xl px-2 py-1.5 text-sm font-medium text-stone-600 transition-colors hover:text-stone-800"
+                    >
+                      Volver a mi lista
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      size="lg"
+                      className="w-full shadow-[0_12px_28px_-14px_rgba(5,150,105,0.75)]"
+                      onClick={() => navigate('/onboarding', { replace: true })}
+                    >
+                      Crear mi lista
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/onboarding', { replace: true })}
+                      className="mx-auto block rounded-xl px-2 py-1.5 text-sm font-medium text-stone-600 transition-colors hover:text-stone-800"
+                    >
+                      Volver
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="auth-rise text-center text-2xl font-black tracking-[-0.03em] text-stone-900">
+                Entrando en la lista…
+              </h1>
+              <p className="auth-rise mt-2 text-center text-sm leading-6 text-stone-600">
+                Un momento, te estamos metiendo en la lista del hogar.
+              </p>
+              <Spinner className="py-4" label="" />
+            </>
+          )}
+        </main>
+      </AuthScene>
     );
   }
 
@@ -211,48 +209,74 @@ export function JoinHouseholdPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center bg-stone-50 px-5 py-10">
-      <div className="flex items-start gap-3">
-        <LogoMark className="h-14 w-14" />
-        <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-700">
-            erfrigovacio
-          </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-stone-900">
-            Entrar en la lista
-          </h1>
-        </div>
-      </div>
-
-      <p className="mt-5 text-sm leading-6 text-stone-500">
-        Pega el enlace o el código de tu hogar. Sin cuenta ni contraseña.
-      </p>
-
-      <form onSubmit={submitAccess} className="mt-5 space-y-4">
-        <Field
-          label="Enlace o código"
-          placeholder="Enlace o código"
-          value={accessInput}
-          onChange={(event) => setAccessInput(event.target.value)}
-          autoCapitalize="characters"
-          autoComplete="off"
-          spellCheck={false}
-          className="font-mono tracking-[0.12em]"
-          autoFocus
-          required
-        />
-        <Button type="submit" size="lg" className="w-full" disabled={!access}>
+    <AuthScene>
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-8">
+        <p className="auth-rise text-center text-[10px] font-bold tracking-[0.34em] text-stone-600 uppercase">
+          erfrigovacio
+        </p>
+        <h1
+          className="auth-rise text-center text-[1.9rem] font-black tracking-[-0.04em] text-stone-900 sm:text-[2.4rem]"
+          style={{ animationDelay: '70ms' }}
+        >
           Entrar en la lista
-        </Button>
-      </form>
+        </h1>
+        <p
+          className="auth-rise mx-auto mt-2 max-w-[19rem] text-center text-sm leading-6 text-stone-600"
+          style={{ animationDelay: '120ms' }}
+        >
+          Pega el enlace o el código que te hayan pasado.
+        </p>
 
-      <Link
-        to="/onboarding"
-        className="mt-4 inline-flex items-center justify-center gap-1 py-2 text-sm font-medium text-stone-500 hover:text-stone-700"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Crear una lista nueva
-      </Link>
-    </div>
+        <form
+          onSubmit={submitAccess}
+          className="auth-rise mt-7 space-y-3"
+          autoComplete="on"
+          style={{ animationDelay: '170ms' }}
+        >
+          {/* Campo oculto para que los gestores de contraseñas asocien el
+              código guardado con este formulario y lo autorrellenen. */}
+          <input
+            type="text"
+            name="username"
+            autoComplete="username"
+            defaultValue="erfrigovacio"
+            readOnly
+            tabIndex={-1}
+            aria-hidden="true"
+            className="pointer-events-none absolute -left-[9999px] h-px w-px opacity-0"
+          />
+          <Field
+            label="Enlace o código"
+            placeholder="Enlace o código"
+            name="access"
+            value={accessInput}
+            onChange={(event) => setAccessInput(event.target.value)}
+            autoCapitalize="characters"
+            autoComplete="current-password"
+            spellCheck={false}
+            className="font-mono tracking-[0.1em]"
+            autoFocus
+            required
+          />
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full shadow-[0_12px_28px_-14px_rgba(5,150,105,0.75)] disabled:bg-stone-200 disabled:text-stone-400 disabled:shadow-none"
+            disabled={!access}
+          >
+            Entrar en la lista
+          </Button>
+        </form>
+
+        <button
+          type="button"
+          onClick={() => navigate('/onboarding')}
+          className="auth-rise mx-auto mt-5 rounded-xl px-2 py-1.5 text-sm font-medium text-stone-600 transition-colors hover:text-stone-800"
+          style={{ animationDelay: '220ms' }}
+        >
+          Crear una lista nueva
+        </button>
+      </main>
+    </AuthScene>
   );
 }

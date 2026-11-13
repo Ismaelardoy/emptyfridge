@@ -6,9 +6,9 @@ test('lista sin registro, más usados, invitación y sincronización', async ({ 
 
   // Entrada sin registro: crear la lista y empezar a añadir productos.
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: '¿Otra vez no queda leche?' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tenemos un infiltrado en casa.' })).toBeVisible();
   await page.getByLabel('Nombre de la lista').fill(householdName);
-  await page.getByRole('button', { name: 'Crear lista y empezar' }).click();
+  await page.getByRole('button', { name: 'Crear mi lista' }).click();
 
   const productInput = page.getByPlaceholder('Añadir producto…');
   await expect(productInput).toBeVisible();
@@ -152,7 +152,7 @@ test('lista sin registro, más usados, invitación y sincronización', async ({ 
     .click();
   await expect(secondPage.getByRole('heading', { name: 'Miembros (1)' })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('heading', { name: '¿Otra vez no queda leche?' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tenemos un infiltrado en casa.' })).toBeVisible();
 
   await thirdContext.close();
   await secondContext.close();

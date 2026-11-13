@@ -121,9 +121,10 @@ export function ProtectedLayout() {
       </aside>
 
       <div className="relative mx-auto flex min-h-dvh w-full max-w-lg flex-col bg-stone-50 sm:my-4 sm:min-h-[calc(100dvh-2rem)] sm:rounded-[2rem] sm:shadow-xl sm:ring-1 sm:ring-stone-200/70 md:max-w-2xl lg:my-0 lg:min-h-dvh lg:max-w-none lg:flex-1 lg:rounded-none lg:shadow-none lg:ring-0">
+        <div aria-hidden className="app-wash" />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 z-0 h-44 overflow-hidden rounded-t-[2rem] lg:hidden"
+          className="pointer-events-none absolute inset-x-0 top-0 z-0 h-44 overflow-hidden rounded-t-[2rem] app-hero lg:hidden"
         >
           <div className="absolute -left-24 -top-24 h-56 w-56 rounded-full bg-emerald-200/40 blur-3xl" />
           <div className="absolute -right-16 -top-10 h-48 w-48 rounded-full bg-amber-100/60 blur-3xl" />

@@ -19,8 +19,9 @@ export function FinishDialog({
       <p className="text-sm leading-6 text-stone-600">
         La compra se cerrará y los productos contarán para vuestros más usados.
         {pendingCount > 0
-          ? ` Quedan ${pendingCount} productos sin marcar; al finalizar se marcarán todos como comprados.`
-          : ' ¡Está todo marcado!'}
+          ? ` Quedan ${pendingCount} productos sin marcar.`
+          : ' ¡Está todo marcado!'}{' '}
+        Si te has equivocado, podrás revertirla durante los próximos 30 minutos.
       </p>
 
       <div className="mt-5 flex gap-2">

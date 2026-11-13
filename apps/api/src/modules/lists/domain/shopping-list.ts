@@ -3,6 +3,8 @@ import type { MemberRef } from '../../../shared/domain/member-ref';
 export const UNITS = ['ud', 'kg', 'g', 'L', 'ml', 'paquete'] as const;
 export type Unit = (typeof UNITS)[number];
 
+export const LIST_UNDO_WINDOW_MS = 30 * 60_000;
+
 export type ListStatus = 'open' | 'done';
 
 export interface ShoppingList {
@@ -39,9 +41,19 @@ export interface RecentAddition {
   createdAt: Date;
 }
 
+export interface FinishedListSummary {
+  id: string;
+  closedAt: Date;
+  closedBy: MemberRef | null;
+  itemCount: number;
+}
+
+export type ReopenResult = 'reopened' | 'already-open' | 'not-found' | 'expired';
+
 export interface CurrentList {
   list: ListWithItems | null;
   recentAdditions: RecentAddition[];
+  lastFinished: FinishedListSummary | null;
 }
 
 export interface FinishResult {

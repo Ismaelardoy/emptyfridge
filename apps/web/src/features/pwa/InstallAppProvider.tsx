@@ -5,6 +5,7 @@ import {
   useInstallPrompt,
 } from '@/shared/lib/pwa-install';
 import { type ReactNode, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { InstallAppDialog } from './InstallAppDialog';
 
 /**
@@ -13,7 +14,15 @@ import { InstallAppDialog } from './InstallAppDialog';
  */
 export function InstallAppProvider({ children }: { children: ReactNode }) {
   const install = useInstallPrompt();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    // La sugerencia es un aviso suave: si cambias de página, desaparece.
+    if (location.pathname) {
+      setOpen(false);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     if (install.installed) {

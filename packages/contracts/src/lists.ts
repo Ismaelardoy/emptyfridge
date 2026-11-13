@@ -77,9 +77,19 @@ export const recentAdditionDtoSchema = z.object({
 });
 export type RecentAdditionDto = z.infer<typeof recentAdditionDtoSchema>;
 
+/** Última compra cerrada, para ofrecer el botón de revertir durante unos minutos. */
+export const finishedListSummaryDtoSchema = z.object({
+  id: z.string(),
+  closedAt: z.string(),
+  closedBy: memberRefSchema.nullable(),
+  itemCount: z.number().int(),
+});
+export type FinishedListSummaryDto = z.infer<typeof finishedListSummaryDtoSchema>;
+
 export const currentListDtoSchema = z.object({
   list: listDtoSchema.nullable(),
   recentAdditions: z.array(recentAdditionDtoSchema),
+  lastFinished: finishedListSummaryDtoSchema.nullable(),
 });
 export type CurrentListDto = z.infer<typeof currentListDtoSchema>;
 

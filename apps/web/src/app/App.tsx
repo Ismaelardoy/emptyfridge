@@ -14,8 +14,8 @@ import { queryClient } from './query-client';
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <InstallAppProvider>
-        <BrowserRouter>
+      <BrowserRouter>
+        <InstallAppProvider>
           <Routes>
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/join" element={<JoinHouseholdPage />} />
@@ -31,9 +31,9 @@ export function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </BrowserRouter>
+        </InstallAppProvider>
         <Toaster position="top-center" richColors closeButton />
-      </InstallAppProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }

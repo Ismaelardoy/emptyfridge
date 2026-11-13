@@ -1,17 +1,15 @@
 import type { AppOutletContext } from '@/app/ProtectedLayout';
-import { pluralize } from '@/shared/lib/format';
 import { Button } from '@/shared/ui/Button';
 import { LogoMark } from '@/shared/ui/Logo';
 import { Spinner } from '@/shared/ui/Spinner';
 import type { ItemDto } from '@emptyfridge/contracts';
-import { CheckCheck } from 'lucide-react';
-import { useState } from 'react';
+import { CheckCheck, Undo2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { AddItemForm } from './AddItemForm';
 import { FinishDialog } from './FinishDialog';
 import { ItemRow } from './ItemRow';
-import { RecentAdditions } from './RecentAdditions';
-import { useCurrentList, useFinishList, useSuggestions } from './hooks';
+import { useCurrentList, useFinishList, useReopenList } from './hooks';
 
 function ItemSection({ title, items }: { title: string; items: ItemDto[] }) {
   if (items.length === 0) {
@@ -34,21 +32,32 @@ function ItemSection({ title, items }: { title: string; items: ItemDto[] }) {
 }
 
 export function ListPage() {
-  const { user } = useOutletContext<AppOutletContext>();
+  const { user, setCanFinish, registerFinishHandler } = useOutletContext<AppOutletContext>();
   const current = useCurrentList();
-  const suggestions = useSuggestions();
   const finish = useFinishList();
+  const reopen = useReopenList();
   const [finishOpen, setFinishOpen] = useState(false);
 
   const items = current.data?.list?.items ?? [];
-  const recentAdditions = current.data?.recentAdditions ?? [];
+  const lastFinished = current.data?.lastFinished ?? null;
   const pending = items.filter((item) => !item.checked);
   const checked = items.filter((item) => item.checked);
+  const canFinish = items.length > 0 && !current.isLoading && !current.isError;
+
+  useEffect(() => {
+    setCanFinish(canFinish);
+    return () => setCanFinish(false);
+  }, [canFinish, setCanFinish]);
+
+  useEffect(() => {
+    registerFinishHandler(() => setFinishOpen(true));
+    return () => registerFinishHandler(null);
+  }, [registerFinishHandler]);
 
   return (
     <div className="px-4">
-      <div className="sticky top-14 z-10 -mx-4 bg-stone-50/95 px-4 pb-3 pt-4 backdrop-blur lg:top-0">
-        <AddItemForm suggestions={suggestions.data?.suggestions ?? []} />
+      <div className="list-add-bar sticky top-0 z-10 -mx-4 bg-stone-50/85 px-4 pb-2 pt-2 backdrop-blur-xl lg:top-0">
+        <AddItemForm />
       </div>
 
       {current.isLoading ? (
@@ -62,7 +71,39 @@ export function ListPage() {
           </Button>
         </div>
       ) : items.length === 0 ? (
-        <>
+        lastFinished ? (
+          <div className="mt-4 flex flex-col items-center rounded-3xl border border-emerald-200 bg-emerald-50/60 px-6 py-8 text-center">
+            <span className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm">
+              <CheckCheck className="h-7 w-7" />
+            </span>
+            <p className="text-base font-semibold text-stone-800">Compra finalizada</p>
+            <p className="mt-1 text-xs leading-5 text-stone-500">
+              {lastFinished.closedBy
+                ? lastFinished.closedBy.id === user.id
+                  ? 'La has finalizado tú.'
+                  : `La finalizó ${lastFinished.closedBy.displayName}.`
+                : 'La compra se ha cerrado.'}
+              {lastFinished.itemCount > 0
+                ? ` ${lastFinished.itemCount} ${
+                    lastFinished.itemCount === 1 ? 'producto' : 'productos'
+                  }.`
+                : ''}
+            </p>
+            <p className="mt-1 text-xs text-stone-400">Si ha sido un error, puedes recuperarla.</p>
+
+            <Button
+              size="lg"
+              variant="secondary"
+              className="mt-4 w-full"
+              loading={reopen.isPending}
+              onClick={() => reopen.mutate(lastFinished.id)}
+            >
+              <Undo2 className="h-5 w-5" />
+              Revertir compra
+            </Button>
+            <p className="mt-2 text-[10px] text-stone-300">Solo durante 30 minutos.</p>
+          </div>
+        ) : (
           <div className="mt-4 flex flex-col items-center rounded-3xl border border-dashed border-stone-200 bg-white/60 px-6 py-10 text-center">
             <LogoMark className="mb-3 h-14 w-14 opacity-80" />
             <p className="text-sm font-semibold text-stone-700">
@@ -70,34 +111,32 @@ export function ListPage() {
             </p>
             <p className="mt-1 text-xs text-stone-400">Añade lo que falta y aparecerá aquí.</p>
           </div>
-          <RecentAdditions entries={recentAdditions} />
-        </>
+        )
       ) : (
-        <div className="pt-2 pb-40">
+        <div className="list-bottom-space pt-2">
           {pending.length === 0 ? (
             <div className="mb-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 ring-1 ring-emerald-100">
-              Todo comprado. Pulsa «Finalizar compra».
+              Todo comprado. Pulsa «Finalizar».
             </div>
           ) : null}
 
           <ItemSection title="Pendientes" items={pending} />
           <ItemSection title="En el carrito" items={checked} />
-
-          <RecentAdditions entries={recentAdditions} />
         </div>
       )}
 
-      {items.length > 0 && !current.isLoading && !current.isError ? (
-        <div className="finish-dock fixed inset-x-0 z-20 flex justify-center px-4 lg:left-64">
-          <div className="w-full max-w-lg rounded-3xl border border-stone-200/70 bg-stone-50/95 p-3 shadow-lg backdrop-blur lg:max-w-2xl">
-            <Button size="lg" className="w-full" onClick={() => setFinishOpen(true)}>
+      {canFinish ? (
+        <div className="finish-action fixed inset-x-0 z-20 px-3 lg:hidden">
+          <div className="mx-auto w-full max-w-lg md:max-w-2xl">
+            <button
+              type="button"
+              onClick={() => setFinishOpen(true)}
+              aria-label="Finalizar compra"
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgba(5,150,105,0.7)] transition-colors hover:bg-emerald-700 active:bg-emerald-800"
+            >
               <CheckCheck className="h-5 w-5" />
               Finalizar compra
-            </Button>
-            <p className="mt-1 text-center text-[11px] text-stone-400">
-              {pending.length} {pluralize(pending.length, 'pendiente', 'pendientes')} ·{' '}
-              {checked.length} en el carrito
-            </p>
+            </button>
           </div>
         </div>
       ) : null}

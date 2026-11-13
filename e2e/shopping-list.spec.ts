@@ -15,6 +15,8 @@ test('lista sin registro, más usados, invitación y sincronización', async ({ 
 
   const addProduct = async (name: string) => {
     await productInput.fill(name);
+    // Al empezar a escribir se abren solos los ajustes de cantidad/unidad.
+    await expect(page.locator('input[type="number"]')).toBeVisible();
     await page.getByRole('button', { name: 'Añadir producto' }).click();
     await expect(page.getByRole('listitem').filter({ hasText: name })).toBeVisible();
   };
@@ -25,9 +27,7 @@ test('lista sin registro, más usados, invitación y sincronización', async ({ 
     await expect(dialog).toBeVisible();
     await dialog.getByRole('button', { name: 'Finalizar', exact: true }).click();
     await expect(dialog).toBeHidden();
-    await expect(page.getByText(/La lista está vacía/)).toBeVisible();
-    // El historial solo muestra altas que siguen en la lista actual.
-    await expect(page.getByText('Quién añadió qué')).toHaveCount(0);
+    await expect(page.getByText('Compra finalizada', { exact: true })).toBeVisible();
   };
 
   await addProduct('Leche');
@@ -40,6 +40,12 @@ test('lista sin registro, más usados, invitación y sincronización', async ({ 
   await expect(installDialog).toBeHidden();
 
   await addProduct('Pan');
+  await finishPurchase();
+
+  // Se puede revertir una compra finalizada por error.
+  await page.getByRole('button', { name: 'Revertir compra' }).click();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Leche' })).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Pan' })).toBeVisible();
   await finishPurchase();
 
   await addProduct('Huevos');
@@ -63,8 +69,9 @@ test('lista sin registro, más usados, invitación y sincronización', async ({ 
   await page.getByRole('link', { name: 'Lista', exact: true }).click();
   await expect(page.getByRole('listitem').filter({ hasText: 'Huevo' })).toBeVisible();
 
-  // Compartir el enlace de invitación.
+  // Compartir el enlace de invitación. El historial vive al final de Hogar.
   await page.getByRole('link', { name: 'Hogar', exact: true }).click();
+  await expect(page.getByText('Quién añadió qué')).toBeVisible();
   const inviteCode = (await page.getByTestId('invite-code').innerText()).trim();
   expect(inviteCode).toMatch(/^[A-Z0-9]{6,8}$/);
   // El código de acceso se genera solo la primera vez que se entra en Hogar.

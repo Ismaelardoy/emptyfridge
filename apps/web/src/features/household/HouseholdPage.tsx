@@ -1,5 +1,7 @@
 import type { AppOutletContext } from '@/app/ProtectedLayout';
 import { useCreateRecoveryCode, useLogout, useRenameDisplayName } from '@/features/auth/hooks';
+import { RecentAdditions } from '@/features/list/RecentAdditions';
+import { useCurrentList } from '@/features/list/hooks';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { Field } from '@/shared/ui/Field';
@@ -26,6 +28,7 @@ export function HouseholdPage() {
   const { user } = useOutletContext<AppOutletContext>();
   const navigate = useNavigate();
   const household = useHousehold();
+  const currentList = useCurrentList();
   const rename = useRenameHousehold();
   const renameDisplayName = useRenameDisplayName();
   const logout = useLogout();
@@ -176,7 +179,7 @@ export function HouseholdPage() {
   };
 
   return (
-    <div className="px-4 py-4">
+    <div className="px-4 pt-4 pb-24 lg:pb-6">
       <h1 className="text-xl font-bold tracking-tight text-stone-900">Hogar</h1>
       <div className="mt-0.5 flex items-center gap-1.5">
         <p className="truncate text-xs text-stone-500">{home.name}</p>
@@ -349,6 +352,8 @@ export function HouseholdPage() {
           ))}
         </ul>
       </section>
+
+      <RecentAdditions entries={currentList.data?.recentAdditions ?? []} />
 
       <Modal
         open={logoutOpen}

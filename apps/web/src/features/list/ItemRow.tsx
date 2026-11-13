@@ -12,7 +12,7 @@ export function ItemRow({ item }: { item: ItemDto }) {
   return (
     <li
       className={cn(
-        'flex items-center gap-1 rounded-2xl bg-white px-2 py-2 shadow-sm ring-1 ring-stone-200/60 transition-opacity',
+        'flex items-center gap-1 rounded-2xl bg-white px-2 py-1 shadow-sm ring-1 ring-stone-200/60 transition-opacity',
         item.checked && 'opacity-60',
       )}
     >
@@ -21,7 +21,7 @@ export function ItemRow({ item }: { item: ItemDto }) {
         onClick={() => toggle.mutate({ id: item.id, checked: !item.checked })}
         aria-pressed={item.checked}
         aria-label={item.checked ? `Desmarcar ${item.name}` : `Marcar ${item.name} como comprado`}
-        className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 text-left"
+        className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-1.5 py-1.5 text-left"
       >
         <span
           className={cn(
@@ -33,20 +33,19 @@ export function ItemRow({ item }: { item: ItemDto }) {
         >
           <Check className="h-4 w-4" strokeWidth={3} />
         </span>
-        <span className="min-w-0 flex-1">
+
+        <span className="flex min-w-0 flex-1 items-center gap-1.5">
           <span
             className={cn(
-              'block truncate text-[15px] font-medium text-stone-800',
+              'min-w-0 truncate text-[15px] font-medium text-stone-800',
               item.checked && 'line-through',
             )}
           >
             {item.name}
           </span>
-          {quantityLabel || item.addedBy ? (
-            <span className="mt-0.5 flex items-center gap-1.5 text-xs text-stone-400">
-              {quantityLabel ? <span>{quantityLabel}</span> : null}
-              {quantityLabel && item.addedBy ? <span aria-hidden>·</span> : null}
-              {item.addedBy ? <span className="truncate">{item.addedBy.displayName}</span> : null}
+          {quantityLabel ? (
+            <span className="shrink-0 rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-500">
+              {quantityLabel}
             </span>
           ) : null}
         </span>

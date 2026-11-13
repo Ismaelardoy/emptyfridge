@@ -14,7 +14,7 @@ import {
   finishList,
   getCurrentList,
   getMostUsed,
-  getSuggestions,
+  reopenList,
   updateItem,
 } from './api';
 
@@ -24,15 +24,6 @@ export function useCurrentList() {
     queryFn: getCurrentList,
     refetchInterval: 3_000,
     refetchIntervalInBackground: false,
-  });
-}
-
-export function useSuggestions() {
-  return useQuery({
-    queryKey: queryKeys.suggestions,
-    queryFn: getSuggestions,
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
   });
 }
 
@@ -83,7 +74,6 @@ export function useAddItem() {
         void queryClient.invalidateQueries({ queryKey: queryKeys.currentList });
       }
 
-      void queryClient.invalidateQueries({ queryKey: queryKeys.suggestions });
       void queryClient.invalidateQueries({ queryKey: queryKeys.mostUsed });
     },
     onError: (error) => toast.error(error.message),
@@ -195,7 +185,20 @@ export function useFinishList() {
     mutationFn: () => finishList(),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['lists'] });
-      toast.success('Compra finalizada. Todos los productos se han marcado como comprados.');
+      toast.success('Compra finalizada. Puedes revertirla durante 30 minutos.');
+    },
+    onError: (error) => toast.error(error.message),
+  });
+}
+
+export function useReopenList() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, string>({
+    mutationFn: reopenList,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['lists'] });
+      toast.success('Compra revertida. La lista vuelve a estar abierta.');
     },
     onError: (error) => toast.error(error.message),
   });

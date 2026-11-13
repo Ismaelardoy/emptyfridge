@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import type { Database, Transaction } from '../../../shared/db/client';
 import { DATABASE } from '../../../shared/db/database.module';
 import { isUniqueViolation } from '../../../shared/db/errors';
@@ -14,7 +14,14 @@ import type {
   ShoppingListRepository,
   UpdateItemPatch,
 } from '../domain/ports';
-import type { FinishResult, ShoppingItem, ShoppingList, Unit } from '../domain/shopping-list';
+import type {
+  FinishResult,
+  FinishedListSummary,
+  ReopenResult,
+  ShoppingItem,
+  ShoppingList,
+  Unit,
+} from '../domain/shopping-list';
 
 type ListRow = typeof lists.$inferSelect;
 type ItemRow = typeof items.$inferSelect;
@@ -229,12 +236,7 @@ export class DrizzleShoppingListRepository implements ShoppingListRepository {
         return null;
       }
 
-      // Al finalizar, todo lo que queda en la lista se considera comprado.
-      await tx
-        .update(items)
-        .set({ checked: true, updatedAt: now })
-        .where(eq(items.listId, open.id));
-
+      // No tocamos los checks: al revertir, la compra vuelve tal y como estaba.
       await tx
         .update(lists)
         .set({ status: 'done', closedAt: now, closedBy: actorId })
@@ -242,6 +244,93 @@ export class DrizzleShoppingListRepository implements ShoppingListRepository {
 
       return { closedListId: open.id };
     });
+  }
+
+  async reopen(
+    householdId: string,
+    listId: string,
+    now: Date,
+    windowMs: number,
+  ): Promise<ReopenResult> {
+    return this.db.transaction(async (tx) => {
+      const [open] = await tx
+        .select({ id: lists.id })
+        .from(lists)
+        .where(and(eq(lists.householdId, householdId), eq(lists.status, 'open')))
+        .limit(1)
+        .for('update');
+
+      if (open) {
+        return 'already-open';
+      }
+
+      const [target] = await tx
+        .select()
+        .from(lists)
+        .where(
+          and(eq(lists.id, listId), eq(lists.householdId, householdId), eq(lists.status, 'done')),
+        )
+        .limit(1)
+        .for('update');
+
+      if (!target) {
+        return 'not-found';
+      }
+
+      if (!target.closedAt || now.getTime() - target.closedAt.getTime() > windowMs) {
+        return 'expired';
+      }
+
+      try {
+        await tx
+          .update(lists)
+          .set({ status: 'open', closedAt: null, closedBy: null })
+          .where(eq(lists.id, listId));
+      } catch (error) {
+        // Otra petición pudo abrir una lista entre la comprobación y el update.
+        if (isUniqueViolation(error)) {
+          return 'already-open';
+        }
+        throw error;
+      }
+
+      return 'reopened';
+    });
+  }
+
+  async findLastFinished(householdId: string): Promise<FinishedListSummary | null> {
+    const [row] = await this.db
+      .select({
+        id: lists.id,
+        closedAt: lists.closedAt,
+        closedById: lists.closedBy,
+        closedByName: users.displayName,
+        itemCount: sql<number>`count(${items.id})::int`,
+      })
+      .from(lists)
+      .leftJoin(users, eq(users.id, lists.closedBy))
+      .leftJoin(items, eq(items.listId, lists.id))
+      .where(
+        and(
+          eq(lists.householdId, householdId),
+          eq(lists.status, 'done'),
+          isNotNull(lists.closedAt),
+        ),
+      )
+      .groupBy(lists.id, users.displayName)
+      .orderBy(desc(lists.closedAt))
+      .limit(1);
+
+    if (!row || row.closedAt === null) {
+      return null;
+    }
+
+    return {
+      id: row.id,
+      closedAt: row.closedAt,
+      closedBy: memberRef(row.closedById, row.closedByName),
+      itemCount: row.itemCount,
+    };
   }
 
   async productUsage(householdId: string, limit: number): Promise<ProductUsageRow[]> {

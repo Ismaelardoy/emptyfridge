@@ -14,6 +14,7 @@ import type {
   UserRepository,
 } from '../modules/auth/domain/ports';
 import type { ShoppingListRepository } from '../modules/lists/domain/ports';
+import type { ReopenResult } from '../modules/lists/domain/shopping-list';
 
 export const NOW = new Date('2026-01-15T10:00:00.000Z');
 
@@ -156,6 +157,8 @@ export function fakeShoppingListRepository(
     updateItem: vi.fn(async () => null),
     deleteItem: vi.fn(async () => false),
     finish: vi.fn(async () => null),
+    reopen: vi.fn(async (): Promise<ReopenResult> => 'not-found'),
+    findLastFinished: vi.fn(async () => null),
     productUsage: vi.fn(async () => []),
     ...overrides,
   } as ShoppingListRepository;

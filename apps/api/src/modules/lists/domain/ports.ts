@@ -1,5 +1,12 @@
 import type { MemberRef } from '../../../shared/domain/member-ref';
-import type { FinishResult, ShoppingItem, ShoppingList, Unit } from './shopping-list';
+import type {
+  FinishResult,
+  FinishedListSummary,
+  ReopenResult,
+  ShoppingItem,
+  ShoppingList,
+  Unit,
+} from './shopping-list';
 
 export const SHOPPING_LIST_REPOSITORY = Symbol('SHOPPING_LIST_REPOSITORY');
 
@@ -43,5 +50,7 @@ export interface ShoppingListRepository {
   ): Promise<ShoppingItem | null>;
   deleteItem(householdId: string, itemId: string): Promise<boolean>;
   finish(householdId: string, actorId: string, now: Date): Promise<FinishResult | null>;
+  reopen(householdId: string, listId: string, now: Date, windowMs: number): Promise<ReopenResult>;
+  findLastFinished(householdId: string): Promise<FinishedListSummary | null>;
   productUsage(householdId: string, limit: number): Promise<ProductUsageRow[]>;
 }

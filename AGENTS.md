@@ -15,7 +15,7 @@ Lista de la compra familiar, móvil primero, en español. **No hay cuentas, cont
 - En `Hogar` → **Iniciar sesión en otro dispositivo** se muestra siempre un **código de acceso** guardable de 16 caracteres (`/recover/:code`). Se genera la primera vez y se guarda en claro (y su hash para validarlo). No se guardan emails ni teléfonos. La API del vale temporal de 10 min (`/transfer`) sigue existiendo, pero la UI ya no la usa. Ver ADR 0013.
 - La lista se sincroniza por sondeo cada **3 s** con actualizaciones optimistas.
 - La sección **Más usados** agrupa productos parecidos (plurales, tildes, erratas de una letra, “de/la”…) y permite añadirlos a la lista con un toque.
-- Al final de la lista hay un historial sutil **«Quién añadió qué»** con las altas que siguen en la lista actual (no compras cerradas ni productos eliminados), para ver los nombres anónimos junto a sus productos.
+- En **Hogar**, al final, hay un historial sutil **«Quién añadió qué»** con las altas que siguen en la lista actual (no compras cerradas ni productos eliminados), para ver los nombres anónimos junto a sus productos.
 - Al abrir la lista por primera vez en la sesión, el campo de producto recibe el foco para intentar abrir el teclado directamente.
 - Tras añadir el primer producto en un dispositivo no instalado, se sugiere **añadir la app a la pantalla de inicio**: instalación nativa si el navegador la permite (Chrome/Edge/Android) o tutorial por plataforma si no (iOS siempre manual). Solo se muestra una vez por dispositivo y nunca si ya se abrió como app.
 - La IP **solo** se usa para rate limiting. Nunca como identidad ni autorización.
@@ -133,13 +133,14 @@ Regla de dependencia: `interface → application → domain ← infrastructure`.
 | --- | --- |
 | `domain/shopping-list.ts` | `ShoppingList`, `ShoppingItem`, `HistoryPage`, `Unit` |
 | `domain/ports.ts` | `ShoppingListRepository` |
-| `application/get-current-list.use-case.ts` | Lista abierta + productos |
+| `application/get-current-list.use-case.ts` | Lista abierta + productos + última compra reversible (`lastFinished`) |
 | `application/add-item.use-case.ts` | Alta con deduplicación de pendientes |
 | `application/update-item.use-case.ts` | Nombre, cantidad, unidad, `checked` |
 | `application/delete-item.use-case.ts` | Borrar producto de lista abierta |
-| `application/finish-shopping.use-case.ts` | Cierra lista, marca todo comprado |
+| `application/finish-shopping.use-case.ts` | Cierra la lista sin tocar los checks; se puede revertir 30 min |
+| `application/reopen-list.use-case.ts` | Reabre una compra reciente si no hay otra lista abierta |
 | `application/most-used.use-case.ts` | Agrupa productos parecidos y devuelve los más usados |
-| `application/suggestions.use-case.ts` | Usa `MostUsedUseCase` para el autocompletado |
+| `application/suggestions.use-case.ts` | Sugerencias agrupadas (la UI ya no muestra autocompletado) |
 | `domain/group-product-names.ts` | Clustering por plurales, tildes, erratas y palabras vacías |
 | `infrastructure/drizzle-shopping-list.repository.ts` | SQL de listas/items/usage |
 | `interface/lists.controller.ts` | Endpoints `/lists/*` |
@@ -165,6 +166,7 @@ Regla de dependencia: `interface → application → domain ← infrastructure`.
 | GET | `/lists/current` | Cookie | Lista abierta + items + altas que siguen en la lista (`recentAdditions`) |
 | POST | `/lists/current/items` | Cookie | Añadir producto |
 | POST | `/lists/current/finish` | Cookie | Finalizar compra |
+| POST | `/lists/:id/reopen` | Cookie | Revertir una compra reciente (30 min) |
 | PATCH | `/lists/items/:id` | Cookie | Actualizar/marcar producto |
 | DELETE | `/lists/items/:id` | Cookie | Borrar producto |
 | GET | `/lists/suggestions` | Cookie | Sugerencias agrupadas |
@@ -186,8 +188,9 @@ Errores: `application/problem+json`, códigos estables en `packages/contracts/sr
 | `/most-used` | `features/list/MostUsedPage.tsx` | Más usados + botón Añadir por producto |
 | `/household` | `features/household/HouseholdPage.tsx` | Compartir, miembros, renombrar, ceder propiedad, código de recuperación, cerrar sesión |
 
-- `app/ProtectedLayout.tsx`: sin sesión o sin hogar → `/onboarding`. En móvil usa cabecera + navegación inferior con **Lista elevada y más grande en el centro**; en escritorio (`lg`) usa barra lateral fija y contenido centrado.
-- `features/list/RecentAdditions.tsx`: historial sutil «Quién añadió qué» a partir de `recentAdditions`.
+- `app/ProtectedLayout.tsx`: sin sesión o sin hogar → `/onboarding`. En móvil la cabecera se desplaza con el contenido y la navegación inferior es un dock flotante compacto con **Lista más grande en el centro, sin sobresalir**; en escritorio (`lg`) usa barra lateral fija y contenido centrado.
+- En la lista, la barra de añadir es compacta y se queda fija arriba. Al escribir, se abren solos los ajustes de cantidad/unidad y no hay desplegable de sugerencias. En móvil, «Finalizar compra» es un botón fijo a todo el ancho fuera de la barra inferior; en escritorio, un botón fijo en la barra lateral. Las tarjetas de producto son de una línea: cantidad junto al nombre y sin autor.
+- `features/list/RecentAdditions.tsx`: historial sutil «Quién añadió qué» a partir de `recentAdditions`; se muestra al final de `Hogar`.
 - `features/pwa/InstallAppProvider.tsx` + `InstallAppDialog.tsx`: sugerencia de instalar la PWA tras el primer producto. La lógica de detección, evento `beforeinstallprompt`, modo standalone y tutoriales por plataforma está en `shared/lib/pwa-install.ts`.
 - `features/auth/hooks.ts`: `useMe`, `useCreateHousehold`, `useJoinHousehold`, `useRenameDisplayName`, `useRedeemTransfer`, `useCreateRecoveryCode`, `useRecoverIdentity`, `useLogout`.
 - `features/auth/api.ts`: `getMe`, `createHousehold` (`/quick/household`), `joinHousehold` (`/quick/join`), `renameDisplayName` (`PATCH /auth/me`), `redeemTransfer` (`/quick/transfer`), `createRecoveryCode` (`/auth/recovery-code`), `recoverIdentity` (`/quick/recover`).
@@ -254,7 +257,10 @@ El servicio `migrate` de Docker aplica migraciones antes de arrancar la API.
 Al entrar en `Hogar`, si la identidad aún no tiene código, `POST /auth/recovery-code` genera un código `XXXX-XXXX-XXXX-XXXX` de 16 caracteres. El código se guarda en `users.recovery_code` y se devuelve en `/auth/me`, por lo que **se muestra siempre** en la tarjeta **Iniciar sesión en otro dispositivo**. En el otro dispositivo `/recover/<código>` → `POST /quick/recover` lo valida contra `recovery_code_hash` y emite sesión para el mismo `user_id`. La UI no regenera el código. La API del vale temporal de 10 min (`/transfer`) sigue existiendo, pero la UI ya no la usa. Ver ADR 0013.
 
 ### Más usados + agrupación
-`GET /lists/most-used` agrupa productos por parecido: plurales, tildes, mayúsculas, puntuación, palabras vacías y erratas de una letra. Devuelve `{ products: [{ name, count }] }`. En UI: `/most-used`, lista ordenada por uso con botón “Añadir”. El autocompletado de la lista usa la misma agrupación.
+`GET /lists/most-used` agrupa productos por parecido: plurales, tildes, mayúsculas, puntuación, palabras vacías y erratas de una letra. Devuelve `{ products: [{ name, count }] }`. En UI: `/most-used`, lista ordenada por uso con botón “Añadir”.
+
+### Finalizar y revertir compra
+`POST /lists/current/finish` cierra la lista sin marcar ni desmarcar productos. Durante 30 minutos, `GET /lists/current` devuelve `lastFinished` y la pantalla vacía muestra «Revertir compra»; `POST /lists/:id/reopen` la reabre tal cual estaba si no hay otra lista abierta.
 
 ## 11. Dónde tocar cada cosa
 
@@ -270,8 +276,8 @@ Al entrar en `Hogar`, si la identidad aún no tiene código, `POST /auth/recover
 | Entrar en otro dispositivo / recuperar identidad | `generate-recovery-code.use-case.ts`, `recover-identity.use-case.ts`, `users.recovery_code`, `users.recovery_code_hash`, `TransferPage.tsx` (`recovery`), tarjeta “Iniciar sesión en otro dispositivo” de `HouseholdPage.tsx` (generación automática si `recoveryCode` es null) |
 | Cambiar invitación/compartir | `JoinHouseholdPage.tsx`, `HouseholdPage.tsx`, `quick.controller.ts` |
 | Más usados / agrupación | `group-product-names.ts`, `most-used.use-case.ts`, `MostUsedPage.tsx`, `SuggestionsUseCase` |
-| Historial de quién añadió qué | `recentAdditions` calculado desde los items de la lista abierta en `get-current-list.use-case.ts`, `RecentAdditions.tsx` |
-| Navegación inferior / icono central grande | `ProtectedLayout.tsx`, `styles.css` (`finish-dock`) |
+| Historial de quién añadió qué (en Hogar) | `recentAdditions` calculado desde los items de la lista abierta en `get-current-list.use-case.ts`, `RecentAdditions.tsx`, `HouseholdPage.tsx` |
+| Navegación inferior compacta / botón Lista sin sobresalir | `ProtectedLayout.tsx`, `styles.css` (`list-bottom-space`) |
 | Entrada con código unificado | `JoinHouseholdPage.tsx` (`resolveAccessInput`) |
 | Sugerir instalar la app / tutorial PWA | `shared/lib/pwa-install.ts`, `features/pwa/*`, `notifyItemAdded` en `features/list/hooks.ts` |
 | Lista/productos | `features/list/*`, `modules/lists/*` |

@@ -6,7 +6,6 @@ import type {
   FinishListResultDto,
   ItemResponseDto,
   MostUsedDto,
-  SuggestionsDto,
   UpdateItemInput,
 } from '@emptyfridge/contracts';
 
@@ -30,8 +29,8 @@ export function finishList(): Promise<FinishListResultDto> {
   return api<FinishListResultDto>('/lists/current/finish', { method: 'POST' });
 }
 
-export function getSuggestions(): Promise<SuggestionsDto> {
-  return api<SuggestionsDto>('/lists/suggestions');
+export function reopenList(listId: string): Promise<void> {
+  return api<void>(`/lists/${listId}/reopen`, { method: 'POST' });
 }
 
 export function getMostUsed(): Promise<MostUsedDto> {

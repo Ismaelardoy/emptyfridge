@@ -1,3 +1,4 @@
+import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/Button';
 import type { Unit } from '@emptyfridge/contracts';
 import { Plus, SlidersHorizontal } from 'lucide-react';
@@ -17,7 +18,7 @@ const UNIT_OPTIONS: { value: Unit; label: string }[] = [
   { value: 'paquete', label: 'paquete' },
 ];
 
-export function AddItemForm({ suggestions }: { suggestions: string[] }) {
+export function AddItemForm() {
   const mutation = useAddItem();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -25,6 +26,19 @@ export function AddItemForm({ suggestions }: { suggestions: string[] }) {
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState<Unit | ''>('');
   const [showDetails, setShowDetails] = useState(false);
+  const [detailsAutoOpened, setDetailsAutoOpened] = useState(false);
+
+  const handleNameChange = (value: string) => {
+    setName(value);
+
+    if (value.trim() === '') {
+      setShowDetails(false);
+      setDetailsAutoOpened(false);
+    } else if (!detailsAutoOpened) {
+      setShowDetails(true);
+      setDetailsAutoOpened(true);
+    }
+  };
 
   useEffect(() => {
     if (autofocusAttempted) {
@@ -71,23 +85,45 @@ export function AddItemForm({ suggestions }: { suggestions: string[] }) {
     setQuantity('');
     setUnit('');
     setShowDetails(false);
+    setDetailsAutoOpened(false);
     inputRef.current?.focus();
   };
 
+  const hasDetails = quantity.trim() !== '' || unit !== '';
+
   return (
-    <form onSubmit={submit} className="rounded-3xl bg-white p-3 shadow-sm ring-1 ring-stone-200/70">
-      <div className="flex items-center gap-2">
+    <form onSubmit={submit} className="rounded-2xl bg-white p-2 shadow-sm ring-1 ring-stone-200/70">
+      <div className="flex items-center gap-1.5">
         <input
           ref={inputRef}
           value={name}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => handleNameChange(event.target.value)}
           placeholder="Añadir producto…"
           aria-label="Producto"
-          list="item-suggestions"
           autoComplete="off"
           maxLength={80}
-          className="h-11 min-w-0 flex-1 rounded-2xl border-0 bg-transparent px-2 text-base text-stone-900 outline-none placeholder:text-stone-400"
+          className="h-10 min-w-0 flex-1 rounded-xl border-0 bg-transparent px-2 text-base text-stone-900 outline-none placeholder:text-stone-400"
         />
+
+        <button
+          type="button"
+          onClick={() => setShowDetails((value) => !value)}
+          aria-label="Cantidad y unidad"
+          aria-expanded={showDetails}
+          title="Cantidad y unidad"
+          className={cn(
+            'relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors',
+            showDetails || hasDetails
+              ? 'bg-emerald-50 text-emerald-700'
+              : 'text-stone-400 hover:bg-stone-100 hover:text-stone-600',
+          )}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          {hasDetails && !showDetails ? (
+            <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          ) : null}
+        </button>
+
         <Button
           type="submit"
           size="icon"
@@ -97,26 +133,6 @@ export function AddItemForm({ suggestions }: { suggestions: string[] }) {
         >
           <Plus className="h-5 w-5" />
         </Button>
-      </div>
-
-      <datalist id="item-suggestions">
-        {suggestions.map((suggestion) => (
-          <option key={suggestion} value={suggestion} />
-        ))}
-      </datalist>
-
-      <div className="mt-1 flex items-center justify-between px-2">
-        <button
-          type="button"
-          onClick={() => setShowDetails((value) => !value)}
-          className="inline-flex items-center gap-1 text-xs font-medium text-stone-400 transition-colors hover:text-stone-600"
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          {showDetails ? 'Ocultar' : 'Cantidad y unidad'}
-        </button>
-        {name.trim() ? (
-          <span className="hidden text-[11px] text-stone-300 sm:block">Enter para añadir</span>
-        ) : null}
       </div>
 
       {showDetails ? (

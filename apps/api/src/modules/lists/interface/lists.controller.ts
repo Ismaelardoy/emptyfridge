@@ -33,9 +33,10 @@ import { DeleteItemUseCase } from '../application/delete-item.use-case';
 import { FinishShoppingUseCase } from '../application/finish-shopping.use-case';
 import { GetCurrentListUseCase } from '../application/get-current-list.use-case';
 import { MostUsedUseCase } from '../application/most-used.use-case';
+import { ReopenListUseCase } from '../application/reopen-list.use-case';
 import { SuggestionsUseCase } from '../application/suggestions.use-case';
 import { UpdateItemUseCase } from '../application/update-item.use-case';
-import { toItemDto, toListDto, toRecentAdditionDto } from './mappers';
+import { toFinishedListSummaryDto, toItemDto, toListDto, toRecentAdditionDto } from './mappers';
 
 @Controller('lists')
 @UseGuards(AuthGuard)
@@ -46,6 +47,7 @@ export class ListsController {
     private readonly updateItem: UpdateItemUseCase,
     private readonly deleteItem: DeleteItemUseCase,
     private readonly finishShopping: FinishShoppingUseCase,
+    private readonly reopenList: ReopenListUseCase,
     private readonly mostUsed: MostUsedUseCase,
     private readonly suggestions: SuggestionsUseCase,
   ) {}
@@ -57,6 +59,7 @@ export class ListsController {
     return {
       list: current.list ? toListDto(current.list) : null,
       recentAdditions: current.recentAdditions.map(toRecentAdditionDto),
+      lastFinished: current.lastFinished ? toFinishedListSummaryDto(current.lastFinished) : null,
     };
   }
 
@@ -74,6 +77,15 @@ export class ListsController {
   @HttpCode(HttpStatus.OK)
   finish(@CurrentUser() user: User): Promise<FinishListResultDto> {
     return this.finishShopping.execute(toHouseholdActor(user));
+  }
+
+  @Post(':id/reopen')
+  @HttpCode(HttpStatus.OK)
+  async reopen(
+    @CurrentUser() user: User,
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+  ): Promise<void> {
+    await this.reopenList.execute(toHouseholdActor(user).householdId, id);
   }
 
   @Patch('items/:id')

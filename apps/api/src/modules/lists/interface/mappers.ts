@@ -1,5 +1,15 @@
-import type { ItemDto, ListDto, RecentAdditionDto } from '@emptyfridge/contracts';
-import type { ListWithItems, RecentAddition, ShoppingItem } from '../domain/shopping-list';
+import type {
+  FinishedListSummaryDto,
+  ItemDto,
+  ListDto,
+  RecentAdditionDto,
+} from '@emptyfridge/contracts';
+import type {
+  FinishedListSummary,
+  ListWithItems,
+  RecentAddition,
+  ShoppingItem,
+} from '../domain/shopping-list';
 
 export function toItemDto(item: ShoppingItem): ItemDto {
   return {
@@ -23,6 +33,17 @@ export function toRecentAdditionDto(entry: RecentAddition): RecentAdditionDto {
       ? { id: entry.addedBy.id, displayName: entry.addedBy.displayName }
       : null,
     createdAt: entry.createdAt.toISOString(),
+  };
+}
+
+export function toFinishedListSummaryDto(summary: FinishedListSummary): FinishedListSummaryDto {
+  return {
+    id: summary.id,
+    closedAt: summary.closedAt.toISOString(),
+    closedBy: summary.closedBy
+      ? { id: summary.closedBy.id, displayName: summary.closedBy.displayName }
+      : null,
+    itemCount: summary.itemCount,
   };
 }
 

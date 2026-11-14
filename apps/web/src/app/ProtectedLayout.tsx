@@ -156,7 +156,7 @@ export function ProtectedLayout() {
 
         <nav className="sticky bottom-0 z-20 px-3 pb-safe pt-2 lg:hidden">
           <div className="mx-auto w-full max-w-lg md:max-w-2xl">
-            <div className="rounded-[1.75rem] border border-stone-200/70 bg-white/90 p-1.5 shadow-[0_10px_32px_rgba(28,25,23,0.14)] backdrop-blur-xl">
+            <div className="rounded-[1.75rem] border border-stone-200/70 bg-white p-1.5 shadow-[0_10px_32px_rgba(28,25,23,0.14)]">
               <div className="grid grid-cols-3 items-center gap-1 px-1.5">
                 {MOBILE_NAV_ITEMS.map(({ to, label, icon: Icon, end }, index) => {
                   const center = index === 1;

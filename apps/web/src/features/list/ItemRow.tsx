@@ -2,23 +2,32 @@ import { cn } from '@/shared/lib/cn';
 import { formatQuantity } from '@/shared/lib/format';
 import type { ItemDto } from '@emptyfridge/contracts';
 import { Check, Trash2 } from 'lucide-react';
-import { useDeleteItem, useToggleItem } from './hooks';
+import { memo } from 'react';
 
-export function ItemRow({ item }: { item: ItemDto }) {
-  const toggle = useToggleItem();
-  const remove = useDeleteItem();
+export interface ItemRowProps {
+  item: ItemDto;
+  onToggle: (variables: { id: string; checked: boolean }) => void;
+  onRemove: (item: ItemDto) => void;
+}
+
+/**
+ * Fila de la lista. Va memoizada y recibe las acciones desde `ListPage`:
+ * así un cambio en un producto (o el sondeo cada 3 s) no vuelve a renderizar
+ * las demás filas, que es lo que hacía lento el teclado en listas largas.
+ */
+export const ItemRow = memo(function ItemRow({ item, onToggle, onRemove }: ItemRowProps) {
   const quantityLabel = formatQuantity(item.quantity, item.unit);
 
   return (
     <li
       className={cn(
-        'flex items-center gap-1 rounded-2xl bg-white px-2 py-1 shadow-sm ring-1 ring-stone-200/60 transition-opacity',
+        'item-row flex items-center gap-1 rounded-2xl bg-white px-2 py-1 shadow-sm ring-1 ring-stone-200/60 transition-opacity',
         item.checked && 'opacity-60',
       )}
     >
       <button
         type="button"
-        onClick={() => toggle.mutate({ id: item.id, checked: !item.checked })}
+        onClick={() => onToggle({ id: item.id, checked: !item.checked })}
         aria-pressed={item.checked}
         aria-label={item.checked ? `Desmarcar ${item.name}` : `Marcar ${item.name} como comprado`}
         className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-1.5 py-1.5 text-left"
@@ -53,7 +62,7 @@ export function ItemRow({ item }: { item: ItemDto }) {
 
       <button
         type="button"
-        onClick={() => remove.mutate(item)}
+        onClick={() => onRemove(item)}
         aria-label={`Eliminar ${item.name}`}
         className="shrink-0 rounded-xl p-2 text-stone-300 transition-colors hover:bg-red-50 hover:text-red-500"
       >
@@ -61,4 +70,4 @@ export function ItemRow({ item }: { item: ItemDto }) {
       </button>
     </li>
   );
-}
+});

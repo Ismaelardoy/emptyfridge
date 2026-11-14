@@ -212,6 +212,16 @@
     padding-bottom: calc(9rem + env(safe-area-inset-bottom));
   }
 
+  /*
+   * Las filas que quedan fuera de pantalla no se maquetan ni se pintan. Sin
+   * esto, con listas largas cada pulsación en el campo de añadir obliga al
+   * navegador a recalcular toda la lista y el móvil va a tirones.
+   */
+  .item-row {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 2.75rem;
+  }
+
   /* La decoración de arriba se funde con el fondo: sin corte horizontal. */
   .app-hero {
     -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
@@ -227,6 +237,17 @@
     background: radial-gradient(130% 80% at 0% 0%, rgb(167 243 208 / 0.26), transparent 70%),
       radial-gradient(120% 65% at 100% 0%, rgb(253 230 138 / 0.2), transparent 66%),
       linear-gradient(180deg, #f7fbf9 0%, #f9fbfa 45%, #fafaf9 100%);
+  }
+
+  /*
+   * En el móvil el tinte se fija a la ventana: como capa absoluta medía todo
+   * el alto del documento y con listas largas iOS se queda sin memoria de
+   * rasterizado (todo va a tirones). En pantallas grandes se deja igual.
+   */
+  @media (max-width: 639px) {
+    .app-wash {
+      position: fixed;
+    }
   }
 
   /* Botón de finalizar fuera de la barra, ligeramente por encima. */

@@ -9,10 +9,23 @@ import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { AddItemForm } from './AddItemForm';
 import { FinishDialog } from './FinishDialog';
-import { ItemRow } from './ItemRow';
-import { useCurrentList, useFinishList, useReopenList } from './hooks';
+import { ItemRow, type ItemRowProps } from './ItemRow';
+import {
+  useCurrentList,
+  useDeleteItem,
+  useFinishList,
+  useReopenList,
+  useToggleItem,
+} from './hooks';
 
-function ItemSection({ title, items }: { title: string; items: ItemDto[] }) {
+interface ItemSectionProps {
+  title: string;
+  items: ItemDto[];
+  onToggle: ItemRowProps['onToggle'];
+  onRemove: ItemRowProps['onRemove'];
+}
+
+function ItemSection({ title, items, onToggle, onRemove }: ItemSectionProps) {
   if (items.length === 0) {
     return null;
   }
@@ -25,7 +38,7 @@ function ItemSection({ title, items }: { title: string; items: ItemDto[] }) {
       </h2>
       <ul className="space-y-2">
         {items.map((item) => (
-          <ItemRow key={item.id} item={item} />
+          <ItemRow key={item.id} item={item} onToggle={onToggle} onRemove={onRemove} />
         ))}
       </ul>
     </section>
@@ -37,6 +50,9 @@ export function ListPage() {
   const current = useCurrentList();
   const finish = useFinishList();
   const reopen = useReopenList();
+  // Una sola instancia por página: antes cada fila creaba sus dos mutaciones.
+  const toggle = useToggleItem();
+  const remove = useDeleteItem();
   const [finishOpen, setFinishOpen] = useState(false);
 
   const items = current.data?.list?.items ?? [];
@@ -127,8 +143,18 @@ export function ListPage() {
             </div>
           ) : null}
 
-          <ItemSection title="Pendientes" items={pending} />
-          <ItemSection title="En el carrito" items={checked} />
+          <ItemSection
+            title="Pendientes"
+            items={pending}
+            onToggle={toggle.mutate}
+            onRemove={remove.mutate}
+          />
+          <ItemSection
+            title="En el carrito"
+            items={checked}
+            onToggle={toggle.mutate}
+            onRemove={remove.mutate}
+          />
         </div>
       )}
 

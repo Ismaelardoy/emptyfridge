@@ -24,6 +24,11 @@ export function useCurrentList() {
     queryFn: getCurrentList,
     refetchInterval: 3_000,
     refetchIntervalInBackground: false,
+    staleTime: 3_000,
+    // El sondeo de cada 3 s cambia `isFetching` aunque la lista sea idéntica.
+    // Sin esto, cada ciclo repinta la lista entera dos veces (ida y vuelta) y
+    // en un móvil con muchos productos se nota como tirones al tocar.
+    notifyOnChangeProps: ['data', 'isLoading', 'isError', 'error'],
   });
 }
 

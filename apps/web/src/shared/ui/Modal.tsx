@@ -49,7 +49,7 @@ export function Modal({
           tabIndex={-1}
           aria-label="Cerrar el diálogo"
           onClick={onClose}
-          className="absolute inset-0 cursor-default bg-stone-950/40 backdrop-blur-sm"
+          className="absolute inset-0 cursor-default bg-stone-950/50"
         />
 
         <div className="relative w-full max-w-md rounded-3xl bg-white p-5 shadow-xl">

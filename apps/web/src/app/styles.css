@@ -53,21 +53,7 @@
   }
 }
 
-/* ---------- Fondo animado de las pantallas de entrada ---------- */
-
-@keyframes auth-drift {
-  0% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-
-  50% {
-    transform: translate3d(5%, -6%, 0) scale(1.12);
-  }
-
-  100% {
-    transform: translate3d(-4%, 5%, 0) scale(1.04);
-  }
-}
+/* ---------- Fondo de las pantallas de entrada ---------- */
 
 @keyframes auth-rise {
   from {
@@ -81,28 +67,12 @@
   }
 }
 
-@keyframes auth-hero-drift {
-  0% {
-    transform: translate3d(-3%, 2%, 0) rotate(-4deg) scale(1);
-  }
-
-  50% {
-    transform: translate3d(2%, -3%, 0) rotate(2deg) scale(1.05);
-  }
-
-  100% {
-    transform: translate3d(4%, 3%, 0) rotate(5deg) scale(1.02);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .history-float,
   .install-sheet {
     animation: none;
   }
 
-  .auth-blob,
-  .auth-hero-drift,
   .auth-rise {
     animation: none !important;
   }
@@ -142,14 +112,17 @@
     background: radial-gradient(90% 60% at 50% -5%, #ffffff 0%, transparent 65%), #faf8f4;
   }
 
+  /*
+   * Sin `filter: blur()` ni animación continua: en WebKit (todos los
+   * navegadores de iPhone/iPad) los blobs difuminados y animados dejaban la
+   * pantalla de entrada a ~2-9 fps. Los degradados radiales ya son suaves por
+   * sí solos y, al ser estáticos, no obligan a repintar.
+   */
   .auth-blob {
     position: absolute;
     border-radius: 9999px;
-    filter: blur(80px);
-    opacity: 0.6;
+    opacity: 0.55;
     pointer-events: none;
-    will-change: transform;
-    animation: auth-drift 26s ease-in-out infinite alternate;
   }
 
   .auth-blob-emerald {
@@ -158,13 +131,10 @@
 
   .auth-blob-amber {
     background: radial-gradient(circle, rgb(253 230 138 / 0.55), transparent 65%);
-    animation-duration: 33s;
-    animation-direction: alternate-reverse;
   }
 
   .auth-blob-sky {
     background: radial-gradient(circle, rgb(186 230 253 / 0.5), transparent 65%);
-    animation-duration: 40s;
   }
 
   .auth-veil {
@@ -185,14 +155,13 @@
     place-items: center;
   }
 
+  /* Estático: animar esta capa con las 6 neveras gigantes reventaba WebKit. */
   .auth-hero-drift {
     position: relative;
     top: -18vh;
     display: grid;
     width: min(96vmin, 34rem);
     opacity: 0.2;
-    animation: auth-hero-drift 30s ease-in-out infinite alternate;
-    will-change: transform;
   }
 
   .auth-hero-face {
@@ -228,26 +197,14 @@
     mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
   }
 
-  /* El tinte de la cabecera continúa por toda la pantalla, sin banda. */
-  .app-wash {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background: radial-gradient(130% 80% at 0% 0%, rgb(167 243 208 / 0.26), transparent 70%),
-      radial-gradient(120% 65% at 100% 0%, rgb(253 230 138 / 0.2), transparent 66%),
-      linear-gradient(180deg, #f7fbf9 0%, #f9fbfa 45%, #fafaf9 100%);
-  }
-
   /*
-   * En el móvil el tinte se fija a la ventana: como capa absoluta medía todo
-   * el alto del documento y con listas largas iOS se queda sin memoria de
-   * rasterizado (todo va a tirones). En pantallas grandes se deja igual.
+   * Fondo del área de la app. Debe ser un color plano: los degradados y los
+   * `filter: blur()` se repintan enteros en WebKit (iPhone/iPad) en cada
+   * pulsación. Con el antiguo `.app-wash` de tres degradados a pantalla
+   * completa, teclear costaba ~60 ms extra en móvil y ~145 ms en escritorio.
    */
-  @media (max-width: 639px) {
-    .app-wash {
-      position: fixed;
-    }
+  .app-surface {
+    background-color: #f8fbf9;
   }
 
   /* Botón de finalizar fuera de la barra, ligeramente por encima. */
@@ -259,7 +216,6 @@
   @media (max-height: 620px) {
     .list-add-bar {
       position: static;
-      backdrop-filter: none;
     }
   }
 }

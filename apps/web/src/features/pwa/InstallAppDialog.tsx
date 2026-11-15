@@ -72,7 +72,7 @@ export function InstallAppDialog({ open, onClose }: { open: boolean; onClose: ()
       <dialog
         open
         aria-labelledby="install-sheet-title"
-        className="install-sheet pointer-events-auto static m-0 max-h-[60dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-[1.75rem] border border-stone-200/70 bg-white/95 p-4 shadow-[0_24px_60px_-24px_rgba(28,25,23,0.5)] backdrop-blur-xl"
+        className="install-sheet pointer-events-auto static m-0 max-h-[60dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-[1.75rem] border border-stone-200/70 bg-white p-4 shadow-[0_24px_60px_-24px_rgba(28,25,23,0.5)]"
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-stone-200" aria-hidden />
 

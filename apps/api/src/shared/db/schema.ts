@@ -112,6 +112,8 @@ export const lists = pgTable(
       .on(table.householdId)
       .where(sql`status = 'open'`),
     index('lists_household_closed_idx').on(table.householdId, table.closedAt),
+    // Para "más usados": acota por hogar y fecha sin recorrer el histórico entero.
+    index('lists_household_created_idx').on(table.householdId, table.createdAt),
     check('lists_status_check', sql`status in ('open', 'done')`),
   ],
 );
@@ -134,6 +136,10 @@ export const items = pgTable(
   },
   (table) => [
     index('items_list_idx').on(table.listId),
+    // El listado ordena por pendientes y luego por alta; así no ordena en memoria.
+    index('items_list_order_idx').on(table.listId, table.checked, table.createdAt),
+    // Para agrupar nombres por lista en "más usados".
+    index('items_list_name_idx').on(table.listId, table.normalizedName),
     // Evita duplicados pendientes incluso si dos personas añaden el mismo
     // producto a la vez. Un producto ya comprado sí puede repetirse.
     uniqueIndex('items_one_pending_per_name')

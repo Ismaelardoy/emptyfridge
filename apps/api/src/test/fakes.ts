@@ -87,6 +87,7 @@ export function makeHouseholdActor(overrides: Partial<HouseholdActor> = {}): Hou
 export function fakeUserRepository(overrides: Partial<UserRepository> = {}): UserRepository {
   return {
     findByIdWithMembership: vi.fn(async () => null),
+    findBySessionTokenHash: vi.fn(async () => null),
     findByDisplayNameKey: vi.fn(async () => null),
     findByRecoveryCodeHash: vi.fn(async () => null),
     create: vi.fn(),
@@ -152,6 +153,7 @@ export function fakeShoppingListRepository(
     findOpen: vi.fn(async () => null),
     ensureOpen: vi.fn(),
     listItems: vi.fn(async () => []),
+    itemsVersion: vi.fn(async () => '0:0'),
     findOpenItemByNormalizedName: vi.fn(async () => null),
     addItem: vi.fn(),
     updateItem: vi.fn(async () => null),

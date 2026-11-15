@@ -21,6 +21,14 @@ export interface UserRepository {
   findByIdWithMembership(id: string): Promise<User | null>;
   findByDisplayNameKey(displayNameKey: string): Promise<User | null>;
   findByRecoveryCodeHash(recoveryCodeHash: string): Promise<User | null>;
+  /**
+   * Sesión válida + identidad + hogar en una sola consulta. Se usa en cada
+   * petición autenticada (incluido el sondeo), así que ahorra un round-trip.
+   */
+  findBySessionTokenHash(
+    tokenHash: string,
+    now: Date,
+  ): Promise<{ user: User; session: Session } | null>;
   create(user: NewUser): Promise<User>;
   updateDisplayName(userId: string, displayName: string, displayNameKey: string): Promise<void>;
   updateRecoveryCode(userId: string, recoveryCode: string, recoveryCodeHash: string): Promise<void>;

@@ -4,8 +4,8 @@ import type { Clock } from '../../../shared/domain/ports';
 import { CLOCK } from '../../../shared/domain/ports';
 import { AppError } from '../../../shared/errors/app-error';
 import type { Session, User } from '../domain/household';
-import { SESSION_REPOSITORY, USER_REPOSITORY } from '../domain/ports';
-import type { SessionRepository, UserRepository } from '../domain/ports';
+import { USER_REPOSITORY } from '../domain/ports';
+import type { UserRepository } from '../domain/ports';
 
 export interface AuthenticatedSession {
   user: User;
@@ -15,7 +15,6 @@ export interface AuthenticatedSession {
 @Injectable()
 export class AuthenticateSessionUseCase {
   constructor(
-    @Inject(SESSION_REPOSITORY) private readonly sessions: SessionRepository,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
@@ -39,12 +38,8 @@ export class AuthenticateSessionUseCase {
       return null;
     }
 
-    const session = await this.sessions.findValidByTokenHash(sha256(token), this.clock.now());
-    if (!session) {
-      return null;
-    }
-
-    const user = await this.users.findByIdWithMembership(session.userId);
-    return user ? { user, session } : null;
+    // Sesión + identidad + hogar en una sola consulta: esto corre en cada
+    // petición autenticada, incluido el sondeo de la lista cada 3 s.
+    return this.users.findBySessionTokenHash(sha256(token), this.clock.now());
   }
 }

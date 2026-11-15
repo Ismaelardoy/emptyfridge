@@ -12,14 +12,15 @@ export class ApiError extends Error {
   }
 }
 
-interface RequestOptions extends Omit<RequestInit, 'body'> {
+export interface RequestOptions extends Omit<RequestInit, 'body'> {
   json?: unknown;
 }
 
-export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+/** Hace la petición sin interpretar el cuerpo (para manejar 304, ETag, etc.). */
+export function requestApi(path: string, options: RequestOptions = {}): Promise<Response> {
   const { json, headers, ...rest } = options;
 
-  const response = await fetch(`/api${path}`, {
+  return fetch(`/api${path}`, {
     credentials: 'same-origin',
     ...rest,
     headers: {
@@ -28,7 +29,10 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     },
     body: json !== undefined ? JSON.stringify(json) : undefined,
   });
+}
 
+/** Convierte la respuesta en JSON y lanza `ApiError` si no es correcta. */
+export async function parseApiResponse<T>(response: Response): Promise<T> {
   if (response.status === 204) {
     return undefined as T;
   }
@@ -46,4 +50,8 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   }
 
   return payload as T;
+}
+
+export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return parseApiResponse<T>(await requestApi(path, options));
 }

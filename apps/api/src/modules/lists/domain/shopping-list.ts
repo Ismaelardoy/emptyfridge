@@ -33,7 +33,7 @@ export interface ListWithItems extends ShoppingList {
   items: ShoppingItem[];
 }
 
-/** Alta reciente en cualquier lista del hogar (incluidas las ya cerradas). */
+/** Alta reciente en la lista abierta (las compras cerradas no cuentan). */
 export interface RecentAddition {
   id: string;
   itemName: string;

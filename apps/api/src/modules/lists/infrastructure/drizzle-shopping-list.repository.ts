@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNotNull, sql } from 'drizzle-orm';
 import type { Database, Transaction } from '../../../shared/db/client';
 import { DATABASE } from '../../../shared/db/database.module';
 import { isUniqueViolation } from '../../../shared/db/errors';
@@ -116,6 +116,19 @@ export class DrizzleShoppingListRepository implements ShoppingListRepository {
       .orderBy(asc(items.checked), desc(items.createdAt));
 
     return rows.map((row) => toItem(row.item, memberRef(row.item.addedBy, row.addedByName)));
+  }
+
+  async itemsVersion(listId: string): Promise<string> {
+    const [row] = await this.db
+      .select({
+        count: sql<number>`count(*)::int`,
+        updatedAt: sql<Date | null>`max(${items.updatedAt})`,
+      })
+      .from(items)
+      .where(eq(items.listId, listId));
+
+    const max = row?.updatedAt ? new Date(row.updatedAt).getTime() : 0;
+    return `${row?.count ?? 0}:${max}`;
   }
 
   async findOpenItemByNormalizedName(
@@ -298,7 +311,7 @@ export class DrizzleShoppingListRepository implements ShoppingListRepository {
     });
   }
 
-  async findLastFinished(householdId: string): Promise<FinishedListSummary | null> {
+  async findLastFinished(householdId: string, since: Date): Promise<FinishedListSummary | null> {
     const [row] = await this.db
       .select({
         id: lists.id,
@@ -315,6 +328,9 @@ export class DrizzleShoppingListRepository implements ShoppingListRepository {
           eq(lists.householdId, householdId),
           eq(lists.status, 'done'),
           isNotNull(lists.closedAt),
+          // Solo interesa la compra reversible: así no se agrega todo el
+          // histórico en cada sondeo cuando la lista está vacía.
+          gte(lists.closedAt, since),
         ),
       )
       .groupBy(lists.id, users.displayName)
@@ -333,7 +349,7 @@ export class DrizzleShoppingListRepository implements ShoppingListRepository {
     };
   }
 
-  async productUsage(householdId: string, limit: number): Promise<ProductUsageRow[]> {
+  async productUsage(householdId: string, limit: number, since: Date): Promise<ProductUsageRow[]> {
     const rows = await this.db
       .select({
         name: sql<string>`min(${items.name})`,
@@ -341,7 +357,7 @@ export class DrizzleShoppingListRepository implements ShoppingListRepository {
       })
       .from(items)
       .innerJoin(lists, eq(lists.id, items.listId))
-      .where(eq(lists.householdId, householdId))
+      .where(and(eq(lists.householdId, householdId), gte(lists.createdAt, since)))
       .groupBy(items.normalizedName)
       .orderBy(sql`count(*) desc`, asc(items.normalizedName))
       .limit(limit);

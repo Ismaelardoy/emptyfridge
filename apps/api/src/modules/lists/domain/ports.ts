@@ -38,6 +38,8 @@ export interface ShoppingListRepository {
   findOpen(householdId: string): Promise<ShoppingList | null>;
   ensureOpen(householdId: string, now: Date): Promise<ShoppingList>;
   listItems(listId: string): Promise<ShoppingItem[]>;
+  /** Huella de los productos de una lista, sin traerlos: `count:max(updated_at)`. */
+  itemsVersion(listId: string): Promise<string>;
   findOpenItemByNormalizedName(
     listId: string,
     normalizedName: string,
@@ -51,6 +53,8 @@ export interface ShoppingListRepository {
   deleteItem(householdId: string, itemId: string): Promise<boolean>;
   finish(householdId: string, actorId: string, now: Date): Promise<FinishResult | null>;
   reopen(householdId: string, listId: string, now: Date, windowMs: number): Promise<ReopenResult>;
-  findLastFinished(householdId: string): Promise<FinishedListSummary | null>;
-  productUsage(householdId: string, limit: number): Promise<ProductUsageRow[]>;
+  /** Última compra cerrada dentro de la ventana indicada (para poder revertir). */
+  findLastFinished(householdId: string, since: Date): Promise<FinishedListSummary | null>;
+  /** Uso por producto dentro de las listas creadas desde `since`. */
+  productUsage(householdId: string, limit: number, since: Date): Promise<ProductUsageRow[]>;
 }

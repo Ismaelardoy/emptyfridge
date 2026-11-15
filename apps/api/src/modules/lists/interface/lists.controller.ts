@@ -1,7 +1,6 @@
 import {
   type AddItemInput,
   type AddItemResultDto,
-  type CurrentListDto,
   type FinishListResultDto,
   type ItemResponseDto,
   type MostUsedDto,
@@ -16,13 +15,16 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
   Patch,
   Post,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { FastifyReply } from 'fastify';
 import { ZodValidationPipe } from '../../../shared/errors/zod-validation.pipe';
 import { toHouseholdActor } from '../../auth/application/household-actor';
 import type { User } from '../../auth/domain/household';
@@ -53,14 +55,31 @@ export class ListsController {
   ) {}
 
   @Get('current')
-  async current(@CurrentUser() user: User): Promise<CurrentListDto> {
+  async current(
+    @CurrentUser() user: User,
+    @Headers('if-none-match') ifNoneMatch: string | undefined,
+    @Res() reply: FastifyReply,
+  ): Promise<void> {
     const actor = toHouseholdActor(user);
-    const current = await this.getCurrentList.execute(actor.householdId);
-    return {
-      list: current.list ? toListDto(current.list) : null,
-      recentAdditions: current.recentAdditions.map(toRecentAdditionDto),
-      lastFinished: current.lastFinished ? toFinishedListSummaryDto(current.lastFinished) : null,
-    };
+    const knownVersion = ifNoneMatch?.replace(/^W\//, '').replace(/^"|"$/g, '');
+    const result = await this.getCurrentList.execute(actor.householdId, knownVersion);
+
+    reply.header('etag', `"${result.version}"`);
+    // El sondeo no debe quedar cacheado por un CDN: la sesión va en cookie.
+    reply.header('cache-control', 'private, no-cache');
+
+    if (!result.current) {
+      reply.code(HttpStatus.NOT_MODIFIED).send();
+      return;
+    }
+
+    reply.send({
+      list: result.current.list ? toListDto(result.current.list) : null,
+      recentAdditions: result.current.recentAdditions.map(toRecentAdditionDto),
+      lastFinished: result.current.lastFinished
+        ? toFinishedListSummaryDto(result.current.lastFinished)
+        : null,
+    });
   }
 
   @Post('current/items')

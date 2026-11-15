@@ -163,7 +163,7 @@ Regla de dependencia: `interface → application → domain ← infrastructure`.
 | PATCH | `/household` | Cookie owner | Renombrar |
 | DELETE | `/household/members/:id` | Cookie | Expulsar (cualquier miembro) |
 | POST | `/household/transfer-ownership` | Cookie owner | Ceder la propiedad a otro miembro |
-| GET | `/lists/current` | Cookie | Lista abierta + items + altas que siguen en la lista (`recentAdditions`) |
+| GET | `/lists/current` | Cookie | Lista abierta + items + altas que siguen en la lista (`recentAdditions`). Soporta `If-None-Match` y responde **304 sin cuerpo** si nada cambió |
 | POST | `/lists/current/items` | Cookie | Añadir producto |
 | POST | `/lists/current/finish` | Cookie | Finalizar compra |
 | POST | `/lists/:id/reopen` | Cookie | Revertir una compra reciente (30 min) |
@@ -189,11 +189,12 @@ Errores: `application/problem+json`, códigos estables en `packages/contracts/sr
 | `/household` | `features/household/HouseholdPage.tsx` | Compartir, miembros, renombrar, ceder propiedad, código de recuperación, cerrar sesión |
 
 - `app/ProtectedLayout.tsx`: sin sesión o sin hogar → `/onboarding`. En móvil la cabecera se desplaza con el contenido y la navegación inferior es un dock flotante compacto con **Lista más grande en el centro, sin sobresalir**; en escritorio (`lg`) usa barra lateral fija y contenido centrado.
+- `app/App.tsx`: `ListPage` y el layout van en el chunk principal; onboarding, acceso, recuperación, Hogar y Más usados son `lazy` con `Suspense`. El chunk inicial queda en ~348 KB (108 KB gzip) y zod solo se descarga en las pantallas de entrada.
 - En la lista, la barra de añadir es compacta y se queda fija arriba. Al escribir, se abren solos los ajustes de cantidad/unidad y no hay desplegable de sugerencias. En móvil, «Finalizar compra» es un botón fijo a todo el ancho fuera de la barra inferior; en escritorio, un botón fijo en la barra lateral. Las tarjetas de producto son de una línea: cantidad junto al nombre y sin autor.
-- Rendimiento en móvil: `ItemRow` va memoizada y recibe `onToggle`/`onRemove` desde `ListPage` (una sola instancia de cada mutación, no una por fila). El sondeo cada 3 s usa `notifyOnChangeProps` para no repintar si los datos no cambian. Las filas llevan `.item-row` con `content-visibility: auto` y el `.app-wash` es `fixed` en móvil: sin eso, listas largas bloquean el hilo principal al teclear. No quitar estas tres cosas sin medir.
+- Rendimiento en móvil (leer antes de tocar estilos): en iPhone/iPad **todos** los navegadores usan WebKit, que repinta las capas decorativas en cada pulsación. Prohibido en pantallas con input: `filter: blur()`, `backdrop-filter`, degradados a pantalla completa en capas propias (`div` absoluto/fijo) y animaciones continuas de capas grandes. Medido: quitar los `blur-3xl` de la cabecera y el antiguo `.app-wash` bajó el tecleo de 353 ms a 58 ms por tecla; quitar blur+animaciones de `AuthScene` subió el onboarding de ~2 fps a 60 fps. El fondo usa `.app-surface` (color plano). Además: `ItemRow` va memoizada con `onToggle`/`onRemove` desde `ListPage` (una sola instancia de mutación, no una por fila), el sondeo de 3 s usa `notifyOnChangeProps` y las filas llevan `.item-row` con `content-visibility: auto` para listas largas.
 - `features/list/RecentAdditions.tsx`: historial sutil «Quién añadió qué» a partir de `recentAdditions`; se muestra al final de `Hogar`.
 - `features/pwa/InstallAppProvider.tsx` + `InstallAppDialog.tsx`: sugerencia de instalar la PWA tras el primer producto. La lógica de detección, evento `beforeinstallprompt`, modo standalone y tutoriales por plataforma está en `shared/lib/pwa-install.ts`.
-- `features/auth/AuthScene.tsx`: escena de entrada clara y minimalista compartida por onboarding, acceso y recuperación: fondo crema, manchas de color y una nevera gigante que se mueve despacio y cambia de expresión entre seis caras (`public/brand/fridges/*.webp`). Sin logo enmarcado ni scroll en móvil. Expone `AuthScene`; los estilos `auth-*` viven en `app/styles.css` (con `prefers-reduced-motion`).
+- `features/auth/AuthScene.tsx`: escena de entrada clara y minimalista compartida por onboarding, acceso y recuperación: fondo crema, manchas de color y una nevera gigante estática que cambia de expresión entre seis caras (`public/brand/fridges/*.webp`). Sin logo enmarcado ni scroll en móvil. Expone `AuthScene`; los estilos `auth-*` viven en `app/styles.css` (con `prefers-reduced-motion`). Los blobs y la nevera son estáticos a propósito: sus animaciones y el `filter: blur()` hundían WebKit a ~2 fps.
 - `features/household/onboarding-copy.ts`: las frases de humor que se turnan en la portada cada ~13 s (título + subtítulo), con fundido suave y sin saltos de altura. Con movimiento reducido se queda la primera.
 - `features/household/InviteCard.tsx`: fila compacta y sin tarjeta en la lista vacía (botón «Compartir lista» con icono de WhatsApp + copiar y compartir nativo).
 - `shared/lib/invite.ts`: enlace/mensaje de invitación y acciones de compartir/copiar reutilizadas por `InviteCard` y `HouseholdPage`.
@@ -251,7 +252,12 @@ El servicio `migrate` de Docker aplica migraciones antes de arrancar la API.
 `Hogar` → “Cerrar sesión en este dispositivo” → `POST /auth/logout` borra la sesión y la cookie; la lista anterior no se toca. Después se puede entrar en otra con su código. Si abres `/join/:code` estando ya en otro hogar, `POST /quick/join` responde `ALREADY_IN_HOUSEHOLD` y la UI ofrece “Salir de la otra lista y entrar en esta”: hace logout y reintenta el join con una identidad nueva.
 
 ### Sincronización
-`useCurrentList` hace polling cada 3 s. Las mutaciones locales son optimistas. La misma respuesta incluye `recentAdditions` para el historial «Quién añadió qué». No hay SSE/WebSockets.
+`useCurrentList` hace polling cada 3 s. Las mutaciones locales son optimistas y el PATCH/DELETE ya actualizan la caché: **no se vuelve a pedir la lista entera tras cada toque**. El sondeo manda el `ETag` de la última respuesta y el servidor contesta **304 sin cuerpo** si la versión no cambió; si cambió, devuelve la lista completa. `Hogar` monta el hook con `poll: false` para no sondear fuera de la lista. No hay SSE/WebSockets.
+
+Rendimiento del backend: `AuthenticateSessionUseCase` resuelve sesión + identidad + hogar en **una** consulta (`findBySessionTokenHash`); `findLastFinished` solo mira la ventana de 30 min y `productUsage` el último año (máximo 250 nombres). No quitar esas ventanas ni volver a invalidar la lista completa tras un toggle.
+
+### Mantenimiento y logs
+`MaintenanceService` (`shared/db/maintenance.service.ts`) corre al arrancar y cada 24 h: borra sesiones **caducadas** y vales de más de 7 días. No borra sesiones sin caducidad: su cookie se renueva en cada visita y hacerlo expulsaría a usuarios activos. `RequestLoggerInterceptor` deja el sondeo de `/lists/current` y `/api/health` en nivel `debug`, así que con `LOG_LEVEL=info` no se escriben.
 
 ### Sesiones sin caducidad y cierre remoto
 `IssueSessionUseCase` crea la sesión con `expires_at = null` (no caduca). `AuthGuard` reemite la cookie de 400 días en cada petición autenticada para esquivar el límite del navegador. `POST /auth/sessions/revoke-others` borra todas las sesiones de la identidad menos la actual (ADR 0011).

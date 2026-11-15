@@ -18,11 +18,14 @@ import {
   updateItem,
 } from './api';
 
-export function useCurrentList() {
+export function useCurrentList({ poll = true }: { poll?: boolean } = {}) {
   return useQuery({
     queryKey: queryKeys.currentList,
-    queryFn: getCurrentList,
-    refetchInterval: 3_000,
+    // Se le pasa la copia actual para poder devolverla si el servidor responde
+    // 304 (nada cambió), conservando los cambios optimistas en curso.
+    queryFn: ({ client }) =>
+      getCurrentList(client.getQueryData<CurrentListDto>(queryKeys.currentList)),
+    refetchInterval: poll ? 3_000 : false,
     refetchIntervalInBackground: false,
     staleTime: 3_000,
     // El sondeo de cada 3 s cambia `isFetching` aunque la lista sea idéntica.
@@ -123,9 +126,20 @@ export function useToggleItem() {
       }
       toast.error(error.message);
     },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.currentList });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.mostUsed });
+    // El PATCH ya devuelve el producto actualizado: se escribe en caché en vez
+    // de pedir otra vez la lista completa. Marcar no cambia «más usados».
+    onSuccess: ({ item }) => {
+      queryClient.setQueryData<CurrentListDto>(queryKeys.currentList, (old) =>
+        old?.list
+          ? {
+              ...old,
+              list: {
+                ...old.list,
+                items: old.list.items.map((entry) => (entry.id === item.id ? item : entry)),
+              },
+            }
+          : old,
+      );
     },
   });
 }
@@ -177,7 +191,7 @@ export function useDeleteItem() {
       });
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.currentList });
+      // Solo «más usados»: el borrado optimista ya dejó la lista correcta.
       void queryClient.invalidateQueries({ queryKey: queryKeys.mostUsed });
     },
   });

@@ -120,15 +120,16 @@ export function ProtectedLayout() {
         </div>
       </aside>
 
-      <div className="relative mx-auto flex min-h-dvh w-full max-w-lg flex-col bg-stone-50 sm:my-4 sm:min-h-[calc(100dvh-2rem)] sm:rounded-[2rem] sm:shadow-xl sm:ring-1 sm:ring-stone-200/70 md:max-w-2xl lg:my-0 lg:min-h-dvh lg:max-w-none lg:flex-1 lg:rounded-none lg:shadow-none lg:ring-0">
-        <div aria-hidden className="app-wash" />
+      <div className="app-surface relative mx-auto flex min-h-dvh w-full max-w-lg flex-col sm:my-4 sm:min-h-[calc(100dvh-2rem)] sm:rounded-[2rem] sm:shadow-xl sm:ring-1 sm:ring-stone-200/70 md:max-w-2xl lg:my-0 lg:min-h-dvh lg:max-w-none lg:flex-1 lg:rounded-none lg:shadow-none lg:ring-0">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 z-0 h-44 overflow-hidden rounded-t-[2rem] app-hero lg:hidden"
         >
-          <div className="absolute -left-24 -top-24 h-56 w-56 rounded-full bg-emerald-200/40 blur-3xl" />
-          <div className="absolute -right-16 -top-10 h-48 w-48 rounded-full bg-amber-100/60 blur-3xl" />
-
+          {/*
+            Nada de `blur-3xl` ni gradientes aquí: en WebKit (todos los
+            navegadores de iPhone/iPad) esta zona se repinta entera en cada
+            pulsación y añadía ~230 ms por tecla. Ver AGENTS.md.
+          */}
           <LogoMark className="absolute -left-8 top-9 h-40 w-40 -rotate-12 opacity-[0.06]" />
 
           <p className="absolute right-2 top-8 max-w-[78%] truncate text-4xl font-black tracking-tighter text-stone-900/[0.04]">

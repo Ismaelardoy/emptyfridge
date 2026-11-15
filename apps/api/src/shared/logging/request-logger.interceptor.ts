@@ -20,7 +20,18 @@ export class RequestLoggerInterceptor implements NestInterceptor {
     return next.handle().pipe(
       finalize(() => {
         const elapsed = Date.now() - startedAt;
-        this.logger.log(`${request.method} ${request.url} ${response.statusCode} ${elapsed}ms`);
+        const line = `${request.method} ${request.url} ${response.statusCode} ${elapsed}ms`;
+        // El sondeo de la lista y el healthcheck son ruido constante: con
+        // LOG_LEVEL=info no se escriben, con debug sí.
+        const isNoise =
+          request.method === 'GET' &&
+          (request.url.startsWith('/api/lists/current') || request.url === '/api/health');
+
+        if (isNoise) {
+          this.logger.debug(line);
+        } else {
+          this.logger.log(line);
+        }
       }),
     );
   }

@@ -1,4 +1,4 @@
-import { api } from '@/shared/api/client';
+import { api, parseApiResponse, requestApi } from '@/shared/api/client';
 import type {
   AddItemInput,
   AddItemResultDto,
@@ -9,8 +9,30 @@ import type {
   UpdateItemInput,
 } from '@emptyfridge/contracts';
 
-export function getCurrentList(): Promise<CurrentListDto> {
-  return api<CurrentListDto>('/lists/current');
+/**
+ * ETag de la última respuesta completa. El sondeo de 3 s lo reenvía y el
+ * servidor contesta 304 sin cuerpo cuando nada ha cambiado.
+ */
+let currentListEtag: string | null = null;
+
+export async function getCurrentList(previous?: CurrentListDto): Promise<CurrentListDto> {
+  const response = await requestApi('/lists/current', {
+    headers: currentListEtag ? { 'if-none-match': currentListEtag } : undefined,
+  });
+
+  if (response.status === 304) {
+    // Sirve la copia viva de la caché (incluye cambios optimistas). Si no hay
+    // copia, se repite sin ETag para no quedarnos congelados.
+    if (previous) {
+      return previous;
+    }
+    currentListEtag = null;
+    return getCurrentList();
+  }
+
+  const data = await parseApiResponse<CurrentListDto>(response);
+  currentListEtag = response.headers.get('etag');
+  return data;
 }
 
 export function addItem(input: AddItemInput): Promise<AddItemResultDto> {

@@ -43,6 +43,13 @@
       "when": 1794490358718,
       "tag": "0005_old_rumiko_fujikawa",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794745300448,
+      "tag": "0006_sleepy_rogue",
+      "breakpoints": true
     }
   ]
 }

@@ -43,7 +43,7 @@ export function HouseholdPage() {
   const { user } = useOutletContext<AppOutletContext>();
   const navigate = useNavigate();
   const household = useHousehold();
-  const currentList = useCurrentList();
+  const currentList = useCurrentList({ poll: false });
   const rename = useRenameHousehold();
   const renameDisplayName = useRenameDisplayName();
   const logout = useLogout();

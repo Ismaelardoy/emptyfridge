@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq, gt, isNull, or } from 'drizzle-orm';
 import type { Database } from '../../../shared/db/client';
 import { DATABASE } from '../../../shared/db/database.module';
 import { isUniqueViolation } from '../../../shared/db/errors';
-import { householdMembers, households, users } from '../../../shared/db/schema';
+import { householdMembers, households, sessions, users } from '../../../shared/db/schema';
 import { AppError } from '../../../shared/errors/app-error';
-import type { Household, Membership, User } from '../domain/household';
+import type { Household, Membership, Session, User } from '../domain/household';
 import type { NewUser, UserRepository } from '../domain/ports';
 
 type UserRow = typeof users.$inferSelect;
@@ -57,6 +57,41 @@ export class DrizzleUserRepository implements UserRepository {
       .limit(1);
 
     return row ? this.toUserFromRow(row) : null;
+  }
+
+  async findBySessionTokenHash(
+    tokenHash: string,
+    now: Date,
+  ): Promise<{ user: User; session: Session } | null> {
+    const [row] = await this.db
+      .select({ user: users, member: householdMembers, household: households, session: sessions })
+      .from(sessions)
+      .innerJoin(users, eq(users.id, sessions.userId))
+      .leftJoin(householdMembers, eq(householdMembers.userId, users.id))
+      .leftJoin(households, eq(households.id, householdMembers.householdId))
+      .where(
+        and(
+          eq(sessions.tokenHash, tokenHash),
+          // Sin fecha = no caduca. Las sesiones antiguas sí tienen fecha.
+          or(isNull(sessions.expiresAt), gt(sessions.expiresAt, now)),
+        ),
+      )
+      .limit(1);
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      user: this.toUserFromRow(row),
+      session: {
+        id: row.session.id,
+        userId: row.session.userId,
+        tokenHash: row.session.tokenHash,
+        expiresAt: row.session.expiresAt,
+        createdAt: row.session.createdAt,
+      },
+    };
   }
 
   async findByDisplayNameKey(displayNameKey: string): Promise<User | null> {

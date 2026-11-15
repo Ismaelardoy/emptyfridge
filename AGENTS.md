@@ -171,7 +171,8 @@ Regla de dependencia: `interface → application → domain ← infrastructure`.
 | DELETE | `/lists/items/:id` | Cookie | Borrar producto |
 | GET | `/lists/suggestions` | Cookie | Sugerencias agrupadas |
 | GET | `/lists/most-used` | Cookie | Productos más usados agrupados |
-| GET | `/health` | No | Healthcheck |
+| GET | `/health` | No | Keep-alive 204 sin cuerpo, sin tocar la BD (para cron/Render) |
+| GET | `/health/db` | No | Healthcheck real: `select 1` y `{"status":"ok"}` |
 
 Errores: `application/problem+json`, códigos estables en `packages/contracts/src/errors.ts`.
 
@@ -353,6 +354,6 @@ Si hay migración nueva, comprobar que `migrate` termina sin error y que el E2E 
 - Guía: `docs/DEPLOY-VERCEL-RENDER-SUPABASE.md`.
 - Auditoría: `docs/AUDITORIA-2026-11.md`.
 - Vercel: `vercel.json` en la raíz, con build del monorepo y rewrite `/api/*` a Render.
-- Render: `render.yaml`, Dockerfile `apps/api/Dockerfile`, healthcheck `/api/health`.
+- Render: `render.yaml`, Dockerfile `apps/api/Dockerfile`, healthcheck `/api/health/db`.
 - Supabase: Postgres con SSL; las migraciones se aplican con `preDeployCommand` o `RUN_MIGRATIONS=true`.
 - No hace falta separar el repo en `frontend/` y `backend/`: ya está separado en `apps/web` y `apps/api` y comparte contratos.

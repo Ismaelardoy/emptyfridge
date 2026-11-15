@@ -112,7 +112,7 @@ Si usas el plan gratuito:
 - Añade `RUN_MIGRATIONS=true` y mantén **una sola instancia**. El entrypoint del contenedor aplica las migraciones y luego arranca la API.
 - El servicio se duerme tras un rato sin tráfico; la primera petición tarda en despertar.
 
-Comprueba `https://<servicio>.onrender.com/api/health`. Debe devolver `{"status":"ok"}`.
+Comprueba `https://<servicio>.onrender.com/api/health/db`. Debe devolver `{"status":"ok"}`. (`/api/health` responde 204 sin cuerpo para el keep-alive.)
 
 ### 3. Vercel: web
 
@@ -130,7 +130,7 @@ El rewrite es importante: el navegador ve la web y la API en el mismo origen (`t
 Comprueba:
 
 - `https://tu-app.vercel.app` carga la SPA.
-- `https://tu-app.vercel.app/api/health` devuelve `{"status":"ok"}` (proxy funcionando).
+- `https://tu-app.vercel.app/api/health/db` devuelve `{"status":"ok"}` (proxy funcionando).
 - Crear un hogar y añadir un producto funciona.
 
 ### Dominios propios
@@ -183,6 +183,6 @@ pnpm db:migrate    # aplica contra DATABASE_URL
 | `no pg_hba.conf entry ... no encryption` | SSL desactivado | `DATABASE_SSL=require` |
 | Render no conecta a Supabase | Conexión directa IPv6 | Usa el Session Pooler (IPv4) |
 | La cookie no se guarda | `PUBLIC_URL` no es https | Pon la URL https real |
-| `/api/health` 404 en Vercel | Rewrite mal configurado | Revisa `vercel.json` y la URL de Render |
+| `/api/health/db` 404 en Vercel | Rewrite mal configurado | Revisa `vercel.json` y la URL de Render |
 | El servicio tarda 30 s en responder | Render free dormido | Plan starter o VPS |
 | Migraciones fallan al desplegar | `preDeployCommand` en plan free | `RUN_MIGRATIONS=true` y 1 instancia |

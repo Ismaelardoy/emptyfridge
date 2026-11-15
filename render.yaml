@@ -6,7 +6,7 @@ services:
     region: frankfurt
     dockerContext: .
     dockerfilePath: ./apps/api/Dockerfile
-    healthCheckPath: /api/health
+    healthCheckPath: /api/health/db
     # Disponible en planes de pago. Ejecuta las migraciones una vez antes
     # de arrancar la nueva versión.
     preDeployCommand: sh -c "cd /app/apps/api && node dist/shared/db/migrate.js"

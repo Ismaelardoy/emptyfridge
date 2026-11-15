@@ -119,7 +119,7 @@ log de auditoría de expulsiones si se usa en grupos grandes.
 - [ ] Sustituir la URL de Render en `vercel.json`.
 - [ ] Configurar `PUBLIC_URL` con la URL HTTPS de Vercel.
 - [ ] Configurar Supabase con SSL y el pooler correcto.
-- [ ] Aplicar migraciones y verificar `/api/health`.
+- [ ] Aplicar migraciones y verificar `/api/health/db`.
 - [ ] Probar cookies en el dominio final (no solo localhost).
 - [ ] Configurar backups de Supabase.
 - [ ] Decidir si se restaura “cerrar sesión en otros dispositivos”.

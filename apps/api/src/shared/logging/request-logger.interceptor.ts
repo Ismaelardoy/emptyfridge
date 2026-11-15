@@ -25,7 +25,7 @@ export class RequestLoggerInterceptor implements NestInterceptor {
         // LOG_LEVEL=info no se escriben, con debug sí.
         const isNoise =
           request.method === 'GET' &&
-          (request.url.startsWith('/api/lists/current') || request.url === '/api/health');
+          (request.url.startsWith('/api/lists/current') || request.url.startsWith('/api/health'));
 
         if (isNoise) {
           this.logger.debug(line);

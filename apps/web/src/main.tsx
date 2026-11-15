@@ -8,10 +8,28 @@ if (!container) {
   throw new Error('No se encontró el elemento #root');
 }
 
+/** No recargamos mientras alguien escribe: se perdería lo tecleado. */
+function isTyping(): boolean {
+  const element = document.activeElement;
+  return (
+    element instanceof HTMLElement &&
+    (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.isContentEditable)
+  );
+}
+
+function reloadWhenIdle(attempt = 0): void {
+  if (!isTyping() || attempt > 30) {
+    window.location.reload();
+    return;
+  }
+  window.setTimeout(() => reloadWhenIdle(attempt + 1), 1000);
+}
+
 /**
  * El service worker guarda la app para que funcione sin conexión, pero puede
- * dejar servida una versión antigua hasta la siguiente recarga. Si una versión
- * nueva toma el control, recargamos una vez para usarla ya.
+ * dejar servida una versión antigua. Si una versión nueva toma el control,
+ * recargamos una sola vez; si el usuario está escribiendo, esperamos a que
+ * suelte el campo (máximo 30 s).
  */
 if ('serviceWorker' in navigator) {
   const hadController = navigator.serviceWorker.controller !== null;
@@ -22,23 +40,33 @@ if ('serviceWorker' in navigator) {
       return;
     }
     reloading = true;
-    window.location.reload();
+    reloadWhenIdle();
   });
 
-  // Busca actualizaciones al arrancar, al volver a la pestaña y cada hora.
+  // Al arrancar, al volver a la app (visible/pageshow/focus) y cada 15 min.
+  // En una PWA de iOS muchas veces no hay navegación: estos eventos son los
+  // que hacen que se entere de un despliegue nuevo sin cerrar la app.
   void navigator.serviceWorker.ready
     .then((registration) => {
-      const check = () => {
+      let lastCheck = 0;
+      const check = (force = false) => {
+        const now = Date.now();
+        if (!force && now - lastCheck < 30_000) {
+          return;
+        }
+        lastCheck = now;
         void registration.update().catch(() => {});
       };
 
-      check();
-      window.setInterval(check, 60 * 60 * 1000);
+      check(true);
+      window.setInterval(() => check(), 15 * 60 * 1000);
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
           check();
         }
       });
+      window.addEventListener('pageshow', () => check());
+      window.addEventListener('focus', () => check());
     })
     .catch(() => {});
 }

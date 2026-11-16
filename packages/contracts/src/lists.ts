@@ -5,6 +5,29 @@ export const units = ['ud', 'kg', 'g', 'L', 'ml', 'paquete'] as const;
 export const unitSchema = z.enum(units);
 export type Unit = z.infer<typeof unitSchema>;
 
+/**
+ * Secciones del supermercado, en el orden en que conviene recorrerlas.
+ * `otros` siempre va al final: es el cajón para lo que no se reconoce.
+ */
+export const productCategories = [
+  'frutas-verduras',
+  'panaderia',
+  'carniceria',
+  'pescaderia',
+  'charcuteria',
+  'lacteos-huevos',
+  'despensa',
+  'congelados',
+  'bebidas',
+  'limpieza-hogar',
+  'higiene-cuidado',
+  'bebes',
+  'mascotas',
+  'otros',
+] as const;
+export const productCategorySchema = z.enum(productCategories);
+export type ProductCategory = z.infer<typeof productCategorySchema>;
+
 export const listStatusSchema = z.enum(['open', 'done']);
 export type ListStatus = z.infer<typeof listStatusSchema>;
 
@@ -41,6 +64,7 @@ export const itemDtoSchema = z.object({
   name: z.string(),
   quantity: z.number().nullable(),
   unit: unitSchema.nullable(),
+  category: productCategorySchema,
   checked: z.boolean(),
   addedBy: memberRefSchema.nullable(),
   createdAt: z.string(),

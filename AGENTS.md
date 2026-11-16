@@ -14,6 +14,7 @@ Lista de la compra familiar, móvil primero, en español. **No hay cuentas, cont
 - El enlace de invitación es el secreto: `/join/:code`. El código empieza en 6 caracteres y crece solo con el número de hogares (ADR 0007).
 - En `Hogar` → **Otro dispositivo** se muestra siempre un **código de acceso** guardable de 16 caracteres (`/recover/:code`). Se genera la primera vez y se guarda en claro (y su hash para validarlo). No se guardan emails ni teléfonos. La API del vale temporal de 10 min (`/transfer`) sigue existiendo, pero la UI ya no la usa. Ver ADR 0013.
 - La lista se sincroniza por sondeo cada **3 s** con actualizaciones optimistas.
+- Cada producto se clasifica solo en una **sección de supermercado** (frutas y verduras, panadería, carnicería, pescadería, charcutería, lácteos y huevos, despensa, congelados, bebidas, limpieza y hogar, higiene y cuidado, bebés, mascotas u otros). Los pendientes se agrupan en ese orden de pasillo y se toleran erratas de una letra al detectar la sección.
 - La sección **Más usados** agrupa productos parecidos (plurales, tildes, erratas de una letra, “de/la”…) y permite añadirlos a la lista con un toque.
 - En **Hogar**, al final, hay un historial sutil **«Quién añadió qué»** con las altas que siguen en la lista actual (no compras cerradas ni productos eliminados), para ver los nombres anónimos junto a sus productos.
 - Al abrir la lista por primera vez en la sesión, el campo de producto recibe el foco para intentar abrir el teclado directamente.
@@ -142,6 +143,7 @@ Regla de dependencia: `interface → application → domain ← infrastructure`.
 | `application/most-used.use-case.ts` | Agrupa productos parecidos y devuelve los más usados |
 | `application/suggestions.use-case.ts` | Sugerencias agrupadas (la UI ya no muestra autocompletado) |
 | `domain/group-product-names.ts` | Clustering por plurales, tildes, erratas y palabras vacías |
+| `domain/product-category.ts` | Clasifica un producto en su sección de supermercado (diccionario, frases y tolerancia a una errata) |
 | `infrastructure/drizzle-shopping-list.repository.ts` | SQL de listas/items/usage |
 | `interface/lists.controller.ts` | Endpoints `/lists/*` |
 
@@ -163,7 +165,7 @@ Regla de dependencia: `interface → application → domain ← infrastructure`.
 | PATCH | `/household` | Cookie owner | Renombrar |
 | DELETE | `/household/members/:id` | Cookie | Expulsar (cualquier miembro) |
 | POST | `/household/transfer-ownership` | Cookie owner | Ceder la propiedad a otro miembro |
-| GET | `/lists/current` | Cookie | Lista abierta + items + altas que siguen en la lista (`recentAdditions`). Soporta `If-None-Match` y responde **304 sin cuerpo** si nada cambió |
+| GET | `/lists/current` | Cookie | Lista abierta + items (cada uno con su `category` de supermercado) + altas que siguen en la lista (`recentAdditions`). Soporta `If-None-Match` y responde **304 sin cuerpo** si nada cambió |
 | POST | `/lists/current/items` | Cookie | Añadir producto |
 | POST | `/lists/current/finish` | Cookie | Finalizar compra |
 | POST | `/lists/:id/reopen` | Cookie | Revertir una compra reciente (30 min) |
@@ -190,8 +192,9 @@ Errores: `application/problem+json`, códigos estables en `packages/contracts/sr
 | `/household` | `features/household/HouseholdPage.tsx` | Compartir, miembros, renombrar, ceder propiedad, código de recuperación, cerrar sesión |
 
 - `app/ProtectedLayout.tsx`: sin sesión o sin hogar → `/onboarding`. En móvil la cabecera se desplaza con el contenido y la navegación inferior es un dock flotante compacto con **Lista más grande en el centro, sin sobresalir**; en escritorio (`lg`) usa barra lateral fija y contenido centrado.
-- `app/App.tsx`: `ListPage` y el layout van en el chunk principal; onboarding, acceso, recuperación, Hogar y Más usados son `lazy` con `Suspense`. El chunk inicial queda en ~348 KB (108 KB gzip) y zod solo se descarga en las pantallas de entrada.
+- `app/App.tsx`: `ListPage` y el layout van en el chunk principal; onboarding, acceso, recuperación, Hogar y Más usados son `lazy` con `Suspense`. El chunk inicial queda en ~414 KB (125 KB gzip) y zod solo se descarga en las pantallas de entrada.
 - En la lista, la barra de añadir es compacta y se queda fija arriba. Al escribir, se abren solos los ajustes de cantidad/unidad y no hay desplegable de sugerencias. En móvil, «Finalizar compra» es un botón fijo a todo el ancho fuera de la barra inferior; en escritorio, un botón fijo en la barra lateral. Las tarjetas de producto son de una línea: cantidad junto al nombre y sin autor.
+- `features/list/ListPage.tsx` agrupa los **pendientes** por sección con `groupItemsByCategory` (orden de pasillo y sin secciones vacías). «En el carrito» sigue en una sola lista. Las etiquetas e iconos están en `shared/lib/product-categories.ts` y `ListPage.tsx`.
 - Rendimiento en móvil (leer antes de tocar estilos): en iPhone/iPad **todos** los navegadores usan WebKit, que repinta las capas decorativas en cada pulsación. Prohibido en pantallas con input: `filter: blur()`, `backdrop-filter`, degradados a pantalla completa en capas propias (`div` absoluto/fijo) y animaciones continuas de capas grandes. Medido: quitar los `blur-3xl` de la cabecera y el antiguo `.app-wash` bajó el tecleo de 353 ms a 58 ms por tecla; quitar blur+animaciones de `AuthScene` subió el onboarding de ~2 fps a 60 fps. El fondo usa `.app-surface` (color plano). Además: `ItemRow` va memoizada con `onToggle`/`onRemove` desde `ListPage` (una sola instancia de mutación, no una por fila), el sondeo de 3 s usa `notifyOnChangeProps` y las filas llevan `.item-row` con `content-visibility: auto` para listas largas.
 - `features/list/RecentAdditions.tsx`: historial sutil «Quién añadió qué» a partir de `recentAdditions`; se muestra al final de `Hogar`.
 - `features/pwa/InstallAppProvider.tsx` + `InstallAppDialog.tsx`: sugerencia de instalar la PWA tras el primer producto. La lógica de detección, evento `beforeinstallprompt`, modo standalone y tutoriales por plataforma está en `shared/lib/pwa-install.ts`.
@@ -215,7 +218,7 @@ Errores: `application/problem+json`, códigos estables en `packages/contracts/sr
 | Archivo | Contenido |
 | --- | --- |
 | `auth.ts` | `userDto`, `householdDto`, crear/unirse/renombrar, códigos de invitación |
-| `lists.ts` | Items, listas, más usados, sugerencias, unidades |
+| `lists.ts` | Items (con `category`), listas, más usados, sugerencias, unidades y catálogo `productCategories` en orden de pasillo |
 | `common.ts` | `uuidSchema` |
 | `errors.ts` | Problem Details |
 | `index.ts` | Reexporta todo |
@@ -258,6 +261,9 @@ El servicio `migrate` de Docker aplica migraciones antes de arrancar la API.
 
 Rendimiento del backend: `AuthenticateSessionUseCase` resuelve sesión + identidad + hogar en **una** consulta (`findBySessionTokenHash`); `findLastFinished` solo mira la ventana de 30 min y `productUsage` el último año (máximo 250 nombres). No quitar esas ventanas ni volver a invalidar la lista completa tras un toggle.
 
+### Orden por secciones del supermercado
+`toItemDto` calcula `category` al serializar con `categorizeProduct` (`domain/product-category.ts`); **no hay columna nueva en la BD**. La clasificación usa un diccionario de palabras y frases por sección, prioriza la frase más concreta y tolera una errata de una letra en palabras de 4+ letras (cambiar, sobrar, faltar o intercambiar dos letras contiguas). Las coincidencias exactas ganan a las difusas para no confundir “polo” con “pollo”. En la web, `groupItemsByCategory` ordena los pendientes por el catálogo `productCategories` y oculta las secciones vacías; lo desconocido cae en «Otros».
+
 ### Mantenimiento y logs
 `MaintenanceService` (`shared/db/maintenance.service.ts`) corre al arrancar y cada 24 h: borra sesiones **caducadas** y vales de más de 7 días. No borra sesiones sin caducidad: su cookie se renueva en cada visita y hacerlo expulsaría a usuarios activos. `RequestLoggerInterceptor` deja el sondeo de `/lists/current` y `/api/health` en nivel `debug`, así que con `LOG_LEVEL=info` no se escriben.
 
@@ -296,6 +302,7 @@ Con la lista vacía (al principio o después de finalizar), debajo de la tarjeta
 | Compartir desde la lista vacía | `InviteCard.tsx`, `shared/lib/invite.ts`, estados vacíos de `ListPage.tsx` |
 | Diseño de las pantallas de entrada | `features/auth/AuthScene.tsx`, utilidades `auth-*` de `app/styles.css`, `OnboardingPage.tsx`, `JoinHouseholdPage.tsx`, `TransferPage.tsx` |
 | Más usados / agrupación | `group-product-names.ts`, `most-used.use-case.ts`, `MostUsedPage.tsx`, `SuggestionsUseCase` |
+| Secciones del supermercado / orden de pasillo | `domain/product-category.ts` (diccionario y erratas), `packages/contracts/src/lists.ts` (`productCategories`), `shared/lib/product-categories.ts` (etiquetas/agrupación), `ListPage.tsx` (iconos) |
 | Historial de quién añadió qué (en Hogar) | `recentAdditions` calculado desde los items de la lista abierta en `get-current-list.use-case.ts`, `RecentAdditions.tsx`, `HouseholdPage.tsx` |
 | Navegación inferior compacta / botón Lista sin sobresalir | `ProtectedLayout.tsx`, `styles.css` (`list-bottom-space`) |
 | Entrada con código unificado | `JoinHouseholdPage.tsx` (`resolveAccessInput`) |

@@ -1,10 +1,29 @@
 import type { AppOutletContext } from '@/app/ProtectedLayout';
 import { InviteCard } from '@/features/household/InviteCard';
+import { PRODUCT_CATEGORY_LABELS, groupItemsByCategory } from '@/shared/lib/product-categories';
 import { Button } from '@/shared/ui/Button';
 import { LogoMark } from '@/shared/ui/Logo';
 import { Spinner } from '@/shared/ui/Spinner';
-import type { ItemDto } from '@emptyfridge/contracts';
-import { CheckCheck, Undo2 } from 'lucide-react';
+import type { ItemDto, ProductCategory } from '@emptyfridge/contracts';
+import {
+  Apple,
+  Baby,
+  Beef,
+  CheckCheck,
+  Croissant,
+  CupSoda,
+  Fish,
+  Ham,
+  type LucideIcon,
+  Milk,
+  Package,
+  PawPrint,
+  ShoppingBasket,
+  Snowflake,
+  Sparkles,
+  SprayCan,
+  Undo2,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { AddItemForm } from './AddItemForm';
@@ -18,14 +37,32 @@ import {
   useToggleItem,
 } from './hooks';
 
+const PRODUCT_CATEGORY_ICONS: Record<ProductCategory, LucideIcon> = {
+  'frutas-verduras': Apple,
+  panaderia: Croissant,
+  carniceria: Beef,
+  pescaderia: Fish,
+  charcuteria: Ham,
+  'lacteos-huevos': Milk,
+  despensa: Package,
+  congelados: Snowflake,
+  bebidas: CupSoda,
+  'limpieza-hogar': SprayCan,
+  'higiene-cuidado': Sparkles,
+  bebes: Baby,
+  mascotas: PawPrint,
+  otros: ShoppingBasket,
+};
+
 interface ItemSectionProps {
   title: string;
+  icon?: LucideIcon;
   items: ItemDto[];
   onToggle: ItemRowProps['onToggle'];
   onRemove: ItemRowProps['onRemove'];
 }
 
-function ItemSection({ title, items, onToggle, onRemove }: ItemSectionProps) {
+function ItemSection({ title, icon: Icon, items, onToggle, onRemove }: ItemSectionProps) {
   if (items.length === 0) {
     return null;
   }
@@ -33,7 +70,10 @@ function ItemSection({ title, items, onToggle, onRemove }: ItemSectionProps) {
   return (
     <section className="mb-5">
       <h2 className="mb-2 flex items-center justify-between px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-stone-400">
-        <span>{title}</span>
+        <span className="flex items-center gap-1.5">
+          {Icon ? <Icon className="h-3.5 w-3.5" strokeWidth={2.2} /> : null}
+          <span>{title}</span>
+        </span>
         <span>{items.length}</span>
       </h2>
       <ul className="space-y-2">
@@ -59,6 +99,7 @@ export function ListPage() {
   const lastFinished = current.data?.lastFinished ?? null;
   const pending = items.filter((item) => !item.checked);
   const checked = items.filter((item) => item.checked);
+  const pendingGroups = groupItemsByCategory(pending);
   const canFinish = items.length > 0 && !current.isLoading && !current.isError;
 
   useEffect(() => {
@@ -143,12 +184,16 @@ export function ListPage() {
             </div>
           ) : null}
 
-          <ItemSection
-            title="Pendientes"
-            items={pending}
-            onToggle={toggle.mutate}
-            onRemove={remove.mutate}
-          />
+          {pendingGroups.map((group) => (
+            <ItemSection
+              key={group.category}
+              title={PRODUCT_CATEGORY_LABELS[group.category]}
+              icon={PRODUCT_CATEGORY_ICONS[group.category]}
+              items={group.items}
+              onToggle={toggle.mutate}
+              onRemove={remove.mutate}
+            />
+          ))}
           <ItemSection
             title="En el carrito"
             items={checked}

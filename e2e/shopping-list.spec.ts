@@ -40,6 +40,9 @@ test('lista sin registro, más usados, invitación y sincronización', async ({ 
   await expect(installDialog).toBeHidden();
 
   await addProduct('Pan');
+  // Los pendientes se agrupan por sección de supermercado.
+  await expect(page.getByRole('heading', { name: /^Panadería/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^Lácteos y huevos/ })).toBeVisible();
   await finishPurchase();
 
   // Se puede revertir una compra finalizada por error.

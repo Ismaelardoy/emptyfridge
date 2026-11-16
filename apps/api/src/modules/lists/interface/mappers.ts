@@ -4,6 +4,7 @@ import type {
   ListDto,
   RecentAdditionDto,
 } from '@emptyfridge/contracts';
+import { categorizeProduct } from '../domain/product-category';
 import type {
   FinishedListSummary,
   ListWithItems,
@@ -18,6 +19,7 @@ export function toItemDto(item: ShoppingItem): ItemDto {
     name: item.name,
     quantity: item.quantity,
     unit: item.unit,
+    category: categorizeProduct(item.name),
     checked: item.checked,
     addedBy: item.addedBy ? { id: item.addedBy.id, displayName: item.addedBy.displayName } : null,
     createdAt: item.createdAt.toISOString(),

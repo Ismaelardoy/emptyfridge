@@ -112,7 +112,7 @@ Si usas el plan gratuito:
 - Añade `RUN_MIGRATIONS=true` y mantén **una sola instancia**. El entrypoint del contenedor aplica las migraciones y luego arranca la API.
 - El servicio se duerme tras un rato sin tráfico; la primera petición tarda en despertar.
 
-Comprueba `https://<servicio>.onrender.com/api/health/db`. Debe devolver `{"status":"ok"}`. (`/api/health` responde 204 sin cuerpo para el keep-alive.)
+Comprueba `https://<servicio>.onrender.com/api/health/db`. Debe devolver `{"status":"ok"}`. (`/api/health` responde un JSON mínimo para el keep-alive.)
 
 ### 3. Vercel: web
 

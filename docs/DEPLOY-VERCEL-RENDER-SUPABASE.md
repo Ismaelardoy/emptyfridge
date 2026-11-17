@@ -56,7 +56,7 @@ instancia (plan gratuito).
    - `PUBLIC_URL=https://tu-app.vercel.app` (la URL de Vercel, no la de Render). Se usa para marcar
      la cookie como `Secure`.
    - `LOG_LEVEL=info`.
-3. Health check: `/api/health/db` (`/api/health` es el keep-alive 204).
+3. Health check: `/api/health/db` (`/api/health` es el keep-alive, un JSON mínimo).
 4. Migraciones: `preDeployCommand` del `render.yaml`. En plan gratuito, activa
    `RUN_MIGRATIONS=true` y mantén **una sola instancia**.
 5. Comprueba que el servicio arranca con el usuario `node` (el Dockerfile ya lo hace) y que la API

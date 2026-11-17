@@ -1,4 +1,4 @@
-import { Controller, Get, Header, HttpCode, HttpStatus, Inject, Module } from '@nestjs/common';
+import { Controller, Get, Header, Inject, Module } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import type { Database } from '../db/client';
 import { DATABASE } from '../db/database.module';
@@ -8,14 +8,19 @@ export class HealthController {
   constructor(@Inject(DATABASE) private readonly db: Database) {}
 
   /**
-   * Keep-alive para cron-job.org / Render: 204 sin cuerpo y sin tocar la base
-   * de datos. cron-job.org aborta si la respuesta supera 64 KB; con 204 no hay
-   * cuerpo que leer (ni chunked ni compresión que un cliente pueda acumular).
+   * Keep-alive para cron-job.org / Render: 200 con un JSON mínimo (15 bytes) y
+   * sin tocar la base de datos.
+   *
+   * No devolver 204: con cuerpo vacío, cron-job.org fallaba con «Failed
+   * (output too large)» aunque la respuesta era de 0 bytes (se queda leyendo
+   * bytes de la conexión reutilizada hasta pasarse de su límite de 8 KB). Con
+   * un cuerpo corto y con `content-length` el framing es inequívoco.
    */
   @Get()
-  @HttpCode(HttpStatus.NO_CONTENT)
   @Header('cache-control', 'no-store')
-  ping(): void {}
+  ping(): { status: 'ok' } {
+    return { status: 'ok' };
+  }
 
   /** Comprobación real de la base de datos. Es la que usa Render. */
   @Get('db')

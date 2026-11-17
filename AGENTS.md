@@ -173,7 +173,7 @@ Regla de dependencia: `interface → application → domain ← infrastructure`.
 | DELETE | `/lists/items/:id` | Cookie | Borrar producto |
 | GET | `/lists/suggestions` | Cookie | Sugerencias agrupadas |
 | GET | `/lists/most-used` | Cookie | Productos más usados agrupados |
-| GET | `/health` | No | Keep-alive 204 sin cuerpo, sin tocar la BD (para cron/Render) |
+| GET | `/health` | No | Keep-alive 200 con JSON mínimo y sin tocar la BD (para cron/Render) |
 | GET | `/health/db` | No | Healthcheck real: `select 1` y `{"status":"ok"}` |
 
 Errores: `application/problem+json`, códigos estables en `packages/contracts/src/errors.ts`.

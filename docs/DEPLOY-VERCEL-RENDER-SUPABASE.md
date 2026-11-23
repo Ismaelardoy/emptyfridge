@@ -56,7 +56,11 @@ instancia (plan gratuito).
    - `PUBLIC_URL=https://tu-app.vercel.app` (la URL de Vercel, no la de Render). Se usa para marcar
      la cookie como `Secure`.
    - `LOG_LEVEL=info`.
-3. Health check: `/api/health/db` (`/api/health` es el keep-alive, un JSON mínimo).
+3. Health check: `/api/health` (200 con `OK`, sin tocar la BD). **No pongas
+   `/api/health/db` aquí**: Render lo sondea cada pocos segundos y reinicia la
+   instancia si falla 15 s seguidos, así que un hipo de Supabase se convertiría
+   en un reinicio y ~1–2 min de 502. Deja `/api/health/db` para el cron externo
+   o un monitor tipo UptimeRobot.
 4. Migraciones: `preDeployCommand` del `render.yaml`. En plan gratuito, activa
    `RUN_MIGRATIONS=true` y mantén **una sola instancia**.
 5. Comprueba que el servicio arranca con el usuario `node` (el Dockerfile ya lo hace) y que la API

@@ -191,7 +191,7 @@ Los dobles de test son objetos en memoria, no mocks de framework. Los casos de u
 
 - **Migraciones**: Drizzle genera SQL versionado en `apps/api/drizzle`. El servicio `migrate` las aplica antes de arrancar la API y termina. Nunca hay `db push` en producción.
 - **Configuración**: Zod valida el entorno al arrancar; si falta una variable, el proceso falla con un mensaje claro.
-- **Salud**: `/api/health` responde 200 con un JSON mínimo (keep-alive de Render/cron) y `/api/health/db` comprueba Postgres. nginx usa `/healthz`.
+- **Salud**: `/api/health` responde 200 con `OK` en texto plano (keep-alive de Render/cron) y `/api/health/db` comprueba Postgres. nginx usa `/healthz`.
 - **Logs**: Nest Logger con nivel configurable por `LOG_LEVEL`; cada petición registra método, ruta, estado y duración.
 - **Backups**: `infra/backup.sh` con `pg_dump` comprimido y retención de 30 días.
 - **Despliegue**: VPS con Compose + Caddy o Vercel + Render + Supabase. Ver [DEPLOYMENT.md](DEPLOYMENT.md).

@@ -41,7 +41,25 @@ export class MaintenanceService implements OnModuleInit, OnApplicationShutdown {
     }
   }
 
+  /**
+   * Nunca lanza. Se invoca con `void` desde `onModuleInit` y desde el
+   * `setInterval`: si la promesa rechaza sin `catch`, Node mata el proceso
+   * (unhandled rejection) y Render tarda ~1 minuto en levantarlo, que es
+   * justo la ventana en la que el cron recibe un 502.
+   */
   async run(): Promise<void> {
+    try {
+      await this.cleanup();
+    } catch (error) {
+      this.logger.error(
+        `Limpieza fallida (la API sigue viva): ${
+          error instanceof Error ? (error.stack ?? error.message) : String(error)
+        }`,
+      );
+    }
+  }
+
+  private async cleanup(): Promise<void> {
     const now = Date.now();
 
     const expiredSessions = await this.db

@@ -6,7 +6,12 @@ services:
     region: frankfurt
     dockerContext: .
     dockerfilePath: ./apps/api/Dockerfile
-    healthCheckPath: /api/health/db
+    # Render pregunta cada pocos segundos y REINICIA la instancia si falla
+    # (15 s sin ruta, 60 s para el reinicio). Por eso aquí va el chequeo
+    # superficial, sin BD: un hipo de Supabase no debe tumbar un proceso sano.
+    # La comprobación real de la BD la hace el cron externo contra
+    # /api/health/db (y de paso mantiene despierto el proyecto free de Supabase).
+    healthCheckPath: /api/health
     # Disponible en planes de pago. Ejecuta las migraciones una vez antes
     # de arrancar la nueva versión.
     preDeployCommand: sh -c "cd /app/apps/api && node dist/shared/db/migrate.js"

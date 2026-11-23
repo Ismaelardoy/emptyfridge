@@ -173,8 +173,8 @@ Regla de dependencia: `interface → application → domain ← infrastructure`.
 | DELETE | `/lists/items/:id` | Cookie | Borrar producto |
 | GET | `/lists/suggestions` | Cookie | Sugerencias agrupadas |
 | GET | `/lists/most-used` | Cookie | Productos más usados agrupados |
-| GET | `/health` | No | Keep-alive 200 con JSON mínimo y sin tocar la BD (para cron/Render) |
-| GET | `/health/db` | No | Healthcheck real: `select 1` y `{"status":"ok"}` |
+| GET | `/health` | No | Liveness: 200 con `OK` (2 bytes) y sin tocar la BD. **Es el health check de Render** |
+| GET | `/health/db` | No | Comprobación real: `select 1` y `{"status":"ok"}`. Solo para el cron externo/monitor; nunca para Render |
 
 Errores: `application/problem+json`, códigos estables en `packages/contracts/src/errors.ts`.
 
@@ -356,12 +356,14 @@ Si hay migración nueva, comprobar que `migrate` termina sin error y que el E2E 
 - **Vercel + Render**: la web debe llamar a `/api` y Vercel proxificar a Render (`vercel.json`). Llamar directamente a Render desde Vercel rompe la cookie `SameSite=Lax` por ser otro sitio.
 - **Supabase**: usa Session Pooler (5432) con `DATABASE_SSL=require` y `DATABASE_PREPARE=true`; Transaction Pooler (6543) exige `DATABASE_PREPARE=false`.
 - **Dependencias**: hay `pnpm.overrides` para Fastify. No subir Zod a 4 sin arreglar la inferencia del frontend. Ver `docs/AUDITORIA-2026-11.md`.
+- **cron-job.org «Failed (output too large)»**: el límite de la cuenta gratuita es **4 KB** de cuerpo. `/api/health` devuelve 2 bytes, así que si ese error aparece, el cuerpo grande lo pone un intermediario (Cloudflare delante de Render, el proxy de Vercel o una página de error del plan gratuito), no la API. No tocar el endpoint para «arreglarlo»: poner el trabajo en **método HEAD** (sin cuerpo, imposible pasarse) o usar un monitor que no tenga ese límite (UptimeRobot, BetterStack, GitHub Actions con `curl -fsS -o /dev/null`).
+- **cron-job.org «Failed (HTTP error)» intermitente**: casi siempre es un **502/503 de Render mientras reinicia la instancia**, no un fallo del cron. Reparto correcto: Render apunta a `/api/health` (liveness, sin BD) y el cron apunta a `/api/health/db` (BD real + mantiene despierto Supabase free). Así un hipo de la BD da un 500 puntual del endpoint, no un reinicio. Para confirmarlo, mira en Render → Events si a esa hora hubo «Instance restarted»/«Health check failed».
 
 ## 15. Despliegue y auditoría
 
 - Guía: `docs/DEPLOY-VERCEL-RENDER-SUPABASE.md`.
 - Auditoría: `docs/AUDITORIA-2026-11.md`.
 - Vercel: `vercel.json` en la raíz, con build del monorepo y rewrite `/api/*` a Render.
-- Render: `render.yaml`, Dockerfile `apps/api/Dockerfile`, healthcheck `/api/health/db`.
+- **Render**: `render.yaml` usa `healthCheckPath: /api/health` (sin BD) a propósito. Render sondea cada pocos segundos y **reinicia** la instancia si falla 15 s seguidos, así que apuntarlo a `/api/health/db` convertía cualquier hipo de Supabase en ~1–2 min de 502 (justo lo que veía cron-job.org). El `preDeployCommand` sigue validando la BD antes de desplegar.
 - Supabase: Postgres con SSL; las migraciones se aplican con `preDeployCommand` o `RUN_MIGRATIONS=true`.
 - No hace falta separar el repo en `frontend/` y `backend/`: ya está separado en `apps/web` y `apps/api` y comparte contratos.

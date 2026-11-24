@@ -8,16 +8,17 @@ export class HealthController {
   constructor(@Inject(DATABASE) private readonly db: Database) {}
 
   /**
-   * Keep-alive para cron-job.org / Render: 200 con `OK` (2 bytes) y sin tocar
-   * la base de datos.
+   * Liveness para Render: 200 con `OK` (2 bytes) y sin tocar la base de datos.
    *
-   * cron-job.org corta la conexión y marca «Failed (output too large)» cuando
-   * el cuerpo pasa de 4 KB (límite de la cuenta gratuita). Si eso aparece con
-   * este endpoint, el cuerpo grande NO sale de la API: lo devuelve un
-   * intermediario (Cloudflare delante de Render, el proxy de Vercel o una
-   * página de error del plan gratuito). Comprobado con `curl`: aquí salen 15
-   * bytes. Para que no pueda pasar nunca, el trabajo de cron debe usar el
-   * método HEAD, que no tiene cuerpo.
+   * Es el `healthCheckPath` de `render.yaml` a propósito. Render sondea cada
+   * pocos segundos y reinicia la instancia si falla 15 s seguidos; con una
+   * consulta a BD aquí, cualquier hipo de Supabase (red, mantenimiento, CPU
+   * compartida) provocaba un reinicio y ~1-2 min de 502. Reiniciar no arregla
+   * un problema de BD, solo añade caída.
+   *
+   * Este endpoint NO sustituye al keep-alive: el cron externo debe seguir
+   * llamando a `/health/db` para mantener despiertos Render (plan free) y
+   * Supabase free (que se pausa tras 7 días sin actividad de BD).
    */
   @Get()
   @Header('cache-control', 'no-store')
@@ -26,7 +27,10 @@ export class HealthController {
     return 'OK';
   }
 
-  /** Comprobación real de la base de datos. Es la que usa Render. */
+  /**
+   * Comprobación real de la base de datos. La usa el cron externo /
+   * monitor (UptimeRobot, BetterStack...), no Render.
+   */
   @Get('db')
   async check(): Promise<{ status: 'ok' }> {
     await this.db.execute(sql`select 1`);
